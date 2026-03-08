@@ -1,0 +1,331 @@
+# PAIDM – UI/UX Wireframes
+
+*(Pan-African Integrated Digital Marketplace)*
+
+> **Note:** These are **platform-ready wireframes** describing layout, components, and user flows. They can be handed directly to **UI designers (Figma/Adobe XD)** or **frontend engineers**.
+
+---
+
+## 1. Global Design Principles
+
+* **Mobile-first** (Android primary)
+* Low-bandwidth friendly
+* Clear trust indicators
+* Location-aware by default
+* Multi-language ready
+
+### Color & Visual Language
+
+* Primary: Deep Green (Trade & Growth)
+* Secondary: Gold / Amber (Trust & Value)
+* Neutral: White, Light Grey
+* Status: Red (Alerts), Blue (Info)
+
+### Core Navigation Pattern
+
+* Bottom Tab Bar (Mobile)
+* Persistent Search
+* Floating “Post Item” button (Business users)
+
+---
+
+## 2. Onboarding & Authentication Screens
+
+### 2.1 Welcome Screen
+
+```
+[ Logo ]
+Trade Across Africa
+
+[ Create Account ]
+[ Login ]
+
+Language Selector 🌍
+```
+
+---
+
+### 2.2 Account Creation
+
+```
+Create Account
+
+[ Full Name ]
+[ Email Address ]
+[ Phone Number ]
+[ Password ]
+[ Country ▼ ]
+[ City ▼ ]
+
+[ Continue ]
+```
+
+---
+
+### 2.3 Role Selection
+
+```
+I am a:
+
+( ) Consumer
+( ) Trader / Reseller
+( ) Manufacturer
+
+[ Continue ]
+```
+
+---
+
+## 3. Home / Marketplace Screen
+
+### 3.1 Consumer Home
+
+```
+[ Search Products, Suppliers... ]
+
+📍 Kampala, Uganda
+
+Categories
+[ Food ] [ Electronics ] [ Fashion ] [ Agriculture ]
+
+Nearby Suppliers
+[ Supplier Card ]  [ Supplier Card ]
+
+Trending Products
+[ Product Card ] [ Product Card ]
+
+Bottom Nav: Home | Orders | Chat | Wallet | Profile
+```
+
+---
+
+### 3.2 Business / Seller Home
+
+```
+[ Search Orders, Products ]
+
+Today’s Stats
+Sales | Orders | Rating
+
+[ + Post New Product ]
+
+My Products
+[ Product Card ]
+
+Pending Orders
+[ Order Card ]
+```
+
+---
+
+## 4. Product Listing Flow
+
+### 4.1 Add New Product
+
+```
+Add Product
+
+[ Product Name ]
+[ Category ▼ ]
+[ Price ] [ Currency ]
+[ MOQ ]
+[ Quantity Available ]
+
+[ Upload Photos + ]
+
+[ Description ]
+
+Shipping Options
+[ ] Local
+[ ] Cross-border
+[ ] Dropship
+
+[ Publish ]
+```
+
+---
+
+### 4.2 Product Details Page
+
+```
+[ Product Images Carousel ]
+
+Product Name
+⭐⭐⭐⭐☆ (4.5)
+
+Price | MOQ
+Supplier: Verified ✅
+Location: Nairobi, Kenya
+
+[ Chat Seller ]  [ Buy Now ]
+
+Product Description
+Reviews
+```
+
+---
+
+## 5. Chat & Communication
+
+### 5.1 Chat List
+
+```
+Chats
+
+[ Supplier A ]
+[ Buyer B ]
+[ Order #1234 ]
+```
+
+---
+
+### 5.2 Chat Window
+
+```
+Supplier Name (Online)
+
+Hello, is this available in bulk?
+Yes, MOQ is 50 units.
+
+[ 📎 Image ] [ Type message... ] [ Send ]
+```
+
+---
+
+## 6. Order & Checkout Experience
+
+### 6.1 Checkout Screen
+
+```
+Order Summary
+
+Product x Quantity
+Delivery Location
+Shipping Cost
+
+Payment Method
+( ) Mobile Money
+( ) Card
+
+[ Pay Securely ]
+```
+
+---
+
+### 6.2 Order Tracking
+
+```
+Order #1234
+Status: In Transit 🚚
+
+[ Map View ]
+Pickup → Delivery
+
+ETA: 2 Days
+```
+
+---
+
+## 7. Wallet & Payments UI
+
+### 7.1 Wallet Dashboard
+
+```
+Wallet Balance
+UGX 1,250,000
+
+[ Add Funds ] [ Withdraw ]
+
+Transactions
++ Sale
+- Purchase
+```
+
+---
+
+## 8. Advertising & Promotions (Business)
+
+### 8.1 Advertise Product
+
+```
+Promote Product
+
+Select Product
+Select Region
+Duration
+
+Cost: $25
+
+[ Pay & Publish Ad ]
+```
+
+---
+
+## 9. Profile & Trust
+
+### 9.1 User Profile
+
+```
+Profile
+
+[ Photo ]
+Name
+Role
+Trust Level: Verified ✅
+
+[ Edit Profile ]
+[ Switch Role ]
+[ Business Verification ]
+```
+
+---
+
+## 10. Admin Dashboard (Web)
+
+### 10.1 Admin Overview
+
+```
+Dashboard
+
+Total Users | Trade Volume | Disputes
+
+[ Users ] [ Transactions ] [ Ads ] [ Logistics ]
+```
+
+---
+
+### 10.2 User Management
+
+```
+User List
+
+Name | Country | Role | Status
+[ View ] [ Suspend ]
+```
+
+---
+
+## 11. UX Trust Enhancements
+
+* Verified badges
+* Escrow progress bar
+* Location confidence indicators
+* Delivery performance scores
+
+---
+
+## 12. Wireframe Handoff Checklist
+
+* Ready for Figma
+* Ready for Flutter / React Native
+* Supports offline caching
+* Modular component system
+
+---
+
+**Next optional steps:**
+
+* High-fidelity UI mockups
+* Clickable prototype
+* Design system (components & tokens)
+* Offline-first UX version

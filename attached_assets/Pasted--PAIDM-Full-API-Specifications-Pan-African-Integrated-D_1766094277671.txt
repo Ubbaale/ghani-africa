@@ -1,0 +1,331 @@
+# PAIDM – Full API Specifications
+
+*(Pan‑African Integrated Digital Marketplace)*
+
+This document defines **production‑ready REST API specifications** for **Payments, Escrow, Chat, and Logistics**, designed for **mobile-first, low-bandwidth, and high-trust African commerce**.
+
+---
+
+## 0. API Standards (Global)
+
+### Base URL
+
+```
+https://api.paidm.africa/v1
+```
+
+### Authentication
+
+* OAuth 2.0 + JWT
+* Token via:
+
+```
+Authorization: Bearer <access_token>
+```
+
+### Common Headers
+
+```
+Content-Type: application/json
+Accept-Language: en | fr | sw | ar | pt
+X-Country-Code: UG | KE | NG | GH | TZ | ZA
+```
+
+### Common Response Format
+
+```json
+{
+  "success": true,
+  "data": {},
+  "error": null
+}
+```
+
+---
+
+## 1. PAYMENTS API
+
+### 1.1 Create Payment Intent
+
+**Used for Mobile Money, Cards, Wallets**
+
+**POST** `/payments/intents`
+
+```json
+{
+  "order_id": "ORD12345",
+  "amount": 150000,
+  "currency": "UGX",
+  "payment_method": "MOBILE_MONEY",
+  "provider": "MTN_MOMO",
+  "payer_phone": "+2567XXXXXXX"
+}
+```
+
+**Response**
+
+```json
+{
+  "payment_intent_id": "PAY98765",
+  "status": "PENDING",
+  "redirect_url": null
+}
+```
+
+---
+
+### 1.2 Payment Webhook (Provider → PAIDM)
+
+**POST** `/payments/webhook`
+
+```json
+{
+  "payment_intent_id": "PAY98765",
+  "status": "SUCCESS",
+  "transaction_ref": "MM123456"
+}
+```
+
+---
+
+### 1.3 Wallet APIs
+
+**GET** `/wallets/balance`
+
+**POST** `/wallets/withdraw`
+
+```json
+{
+  "amount": 50000,
+  "method": "MOBILE_MONEY",
+  "destination": "+2567XXXXXXX"
+}
+```
+
+---
+
+## 2. ESCROW API
+
+### 2.1 Create Escrow
+
+**Automatically called after successful payment**
+
+**POST** `/escrow/create`
+
+```json
+{
+  "order_id": "ORD12345",
+  "buyer_id": "USR1",
+  "seller_id": "USR2",
+  "amount": 150000,
+  "currency": "UGX"
+}
+```
+
+---
+
+### 2.2 Release Escrow
+
+**Triggered after delivery confirmation**
+
+**POST** `/escrow/release`
+
+```json
+{
+  "order_id": "ORD12345",
+  "confirmation_method": "OTP"
+}
+```
+
+---
+
+### 2.3 Escrow Status
+
+**GET** `/escrow/status/{order_id}`
+
+```json
+{
+  "status": "HELD",
+  "milestones": ["PAID", "SHIPPED"]
+}
+```
+
+---
+
+## 3. CHAT & MESSAGING API
+
+### 3.1 Create / Fetch Conversation
+
+**POST** `/chats`
+
+```json
+{
+  "participants": ["USR1", "USR2"],
+  "order_id": "ORD12345"
+}
+```
+
+---
+
+### 3.2 Send Message
+
+**POST** `/chats/{chat_id}/messages`
+
+```json
+{
+  "type": "TEXT",
+  "message": "Is this available in bulk?"
+}
+```
+
+---
+
+### 3.3 Send Image / File
+
+**POST** `/chats/{chat_id}/attachments`
+
+* multipart/form-data
+
+---
+
+### 3.4 Real‑Time Messaging
+
+* WebSocket: `/ws/chat`
+* Events:
+
+  * MESSAGE_SENT
+  * MESSAGE_READ
+  * USER_ONLINE
+
+---
+
+## 4. LOGISTICS & DELIVERY API
+
+### 4.1 Create Shipment
+
+**POST** `/logistics/shipments`
+
+```json
+{
+  "order_id": "ORD12345",
+  "pickup": {
+    "address": "Industrial Area, Nairobi",
+    "country": "KE"
+  },
+  "delivery": {
+    "address": "Ntinda, Kampala",
+    "country": "UG"
+  },
+  "package": {
+    "weight_kg": 10,
+    "type": "BOX"
+  }
+}
+```
+
+---
+
+### 4.2 Assign Courier (Smart Routing)
+
+**POST** `/logistics/assign`
+
+```json
+{
+  "shipment_id": "SHIP123",
+  "priority": "FASTEST"
+}
+```
+
+---
+
+### 4.3 Shipment Tracking
+
+**GET** `/logistics/track/{shipment_id}`
+
+```json
+{
+  "status": "IN_TRANSIT",
+  "eta": "2025-12-20",
+  "location": "Jinja"
+}
+```
+
+---
+
+### 4.4 Proof of Delivery
+
+**POST** `/logistics/pod`
+
+```json
+{
+  "shipment_id": "SHIP123",
+  "otp": "348921",
+  "photo_url": "https://cdn.paidm.africa/pod.jpg"
+}
+```
+
+---
+
+## 5. DISPUTES & TRUST API (Escrow‑Linked)
+
+### 5.1 Open Dispute
+
+**POST** `/disputes`
+
+```json
+{
+  "order_id": "ORD12345",
+  "reason": "Item not as described"
+}
+```
+
+---
+
+### 5.2 Resolve Dispute (Admin)
+
+**POST** `/disputes/{id}/resolve`
+
+```json
+{
+  "resolution": "REFUND_BUYER"
+}
+```
+
+---
+
+## 6. SECURITY & RATE LIMITS
+
+* Rate limit: 100 req/min/user
+* Signed webhooks
+* Encrypted PII fields
+* Idempotency keys for payments
+
+---
+
+## 7. EVENT‑DRIVEN ARCHITECTURE
+
+Key Events:
+
+* PAYMENT_SUCCESS
+* ESCROW_CREATED
+* ORDER_SHIPPED
+* DELIVERY_CONFIRMED
+* ESCROW_RELEASED
+
+---
+
+## 8. READY FOR EXTENSIONS
+
+* USSD APIs
+* Offline sync endpoints
+* AI fraud scoring
+* Embedded SME financing
+
+---
+
+**Next optional deliverables:**
+
+* OpenAPI (Swagger) YAML
+* Sequence diagrams
+* Offline‑first sync APIs
+* Country‑specific payment adapters
