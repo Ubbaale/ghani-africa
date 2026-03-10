@@ -1625,3 +1625,421 @@ export const afcftaCertificates = pgTable("afcfta_certificates", {
 export const insertAfcftaCertificateSchema = createInsertSchema(afcftaCertificates).omit({ id: true, createdAt: true, reviewedAt: true });
 export type AfcftaCertificate = typeof afcftaCertificates.$inferSelect;
 export type InsertAfcftaCertificate = z.infer<typeof insertAfcftaCertificateSchema>;
+
+// ============ REFERRALS ============
+export const referrals = pgTable("referrals", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  referrerId: varchar("referrer_id").notNull(),
+  referralCode: text("referral_code").notNull().unique(),
+  referredUserId: varchar("referred_user_id"),
+  referredEmail: text("referred_email"),
+  status: text("status").notNull().default("pending"), // pending, signed_up, first_purchase, rewarded
+  rewardAmount: decimal("reward_amount", { precision: 10, scale: 2 }),
+  rewardCurrency: text("reward_currency").default("USD"),
+  createdAt: timestamp("created_at").defaultNow(),
+  convertedAt: timestamp("converted_at"),
+}, (table) => [
+  index("idx_referral_referrer").on(table.referrerId),
+  index("idx_referral_code").on(table.referralCode),
+  index("idx_referral_status").on(table.status),
+]);
+
+export const referralsRelations = relations(referrals, ({ one }) => ({
+  referrer: one(userProfiles, { fields: [referrals.referrerId], references: [userProfiles.id] }),
+}));
+
+export const insertReferralSchema = createInsertSchema(referrals).omit({ id: true, createdAt: true, convertedAt: true });
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = z.infer<typeof insertReferralSchema>;
+
+// ============ SOCIAL MEDIA POSTS (auto-generated) ============
+export const socialPosts = pgTable("social_posts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  platform: text("platform").notNull(), // facebook, twitter, instagram, whatsapp, linkedin, tiktok
+  contentType: text("content_type").notNull().default("product_promo"), // product_promo, trending, new_arrival, testimonial, platform_promo, trade_tip
+  title: text("title"),
+  content: text("content").notNull(),
+  hashtags: text("hashtags"),
+  productId: integer("product_id"),
+  imageUrl: text("image_url"),
+  shareUrl: text("share_url"),
+  status: text("status").notNull().default("draft"), // draft, scheduled, posted, failed
+  scheduledAt: timestamp("scheduled_at"),
+  postedAt: timestamp("posted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_social_platform").on(table.platform),
+  index("idx_social_status").on(table.status),
+  index("idx_social_scheduled").on(table.scheduledAt),
+]);
+
+export const insertSocialPostSchema = createInsertSchema(socialPosts).omit({ id: true, createdAt: true, postedAt: true });
+export type SocialPost = typeof socialPosts.$inferSelect;
+export type InsertSocialPost = z.infer<typeof insertSocialPostSchema>;
+
+// ============ MARKETING AUTOMATION ============
+export const marketingAutomations = pgTable("marketing_automations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // email_digest, new_product_alert, trending_products, weekly_deals, social_auto_post
+  isActive: boolean("is_active").default(true),
+  intervalHours: integer("interval_hours").notNull().default(168), // default weekly
+  lastRunAt: timestamp("last_run_at"),
+  nextRunAt: timestamp("next_run_at"),
+  config: jsonb("config"), // automation-specific settings
+  totalSent: integer("total_sent").default(0),
+  totalClicks: integer("total_clicks").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_automation_type").on(table.type),
+  index("idx_automation_active").on(table.isActive),
+]);
+
+export const insertMarketingAutomationSchema = createInsertSchema(marketingAutomations).omit({ id: true, createdAt: true, lastRunAt: true });
+export type MarketingAutomation = typeof marketingAutomations.$inferSelect;
+export type InsertMarketingAutomation = z.infer<typeof insertMarketingAutomationSchema>;
+
+// ============ BNPL (BUY NOW PAY LATER) ============
+export const bnplPlans = pgTable("bnpl_plans", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  buyerId: varchar("buyer_id", { length: 255 }).notNull(),
+  orderId: integer("order_id"),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
+  installments: integer("installments").notNull().default(3),
+  installmentAmount: decimal("installment_amount", { precision: 12, scale: 2 }).notNull(),
+  paidInstallments: integer("paid_installments").default(0),
+  interestRate: decimal("interest_rate", { precision: 5, scale: 2 }).default("3.00"),
+  status: text("status").default("active"),
+  nextPaymentDate: timestamp("next_payment_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_bnpl_buyer").on(table.buyerId),
+  index("idx_bnpl_status").on(table.status),
+]);
+
+export const bnplPayments = pgTable("bnpl_payments", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  planId: integer("plan_id").notNull(),
+  installmentNumber: integer("installment_number").notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  status: text("status").default("pending"),
+  dueDate: timestamp("due_date").notNull(),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_bnpl_payment_plan").on(table.planId),
+]);
+
+export const insertBnplPlanSchema = createInsertSchema(bnplPlans).omit({ id: true, createdAt: true });
+export type BnplPlan = typeof bnplPlans.$inferSelect;
+export type InsertBnplPlan = z.infer<typeof insertBnplPlanSchema>;
+export const insertBnplPaymentSchema = createInsertSchema(bnplPayments).omit({ id: true, createdAt: true });
+export type BnplPayment = typeof bnplPayments.$inferSelect;
+export type InsertBnplPayment = z.infer<typeof insertBnplPaymentSchema>;
+
+// ============ TRADE DOCUMENTS ============
+export const tradeDocuments = pgTable("trade_documents", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  orderId: integer("order_id").notNull(),
+  type: text("type").notNull(),
+  documentNumber: text("document_number").notNull(),
+  data: jsonb("data"),
+  generatedBy: varchar("generated_by", { length: 255 }).notNull(),
+  fee: decimal("fee", { precision: 8, scale: 2 }).default("3.00"),
+  status: text("status").default("generated"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_trade_doc_order").on(table.orderId),
+  index("idx_trade_doc_type").on(table.type),
+]);
+
+export const insertTradeDocumentSchema = createInsertSchema(tradeDocuments).omit({ id: true, createdAt: true });
+export type TradeDocument = typeof tradeDocuments.$inferSelect;
+export type InsertTradeDocument = z.infer<typeof insertTradeDocumentSchema>;
+
+// ============ STOREFRONTS ============
+export const storefronts = pgTable("storefronts", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  sellerId: varchar("seller_id", { length: 255 }).notNull(),
+  name: text("name").notNull(),
+  slug: text("slug").unique().notNull(),
+  logo: text("logo"),
+  banner: text("banner"),
+  description: text("description"),
+  theme: jsonb("theme").default({}),
+  customSections: jsonb("custom_sections").default([]),
+  isPublished: boolean("is_published").default(false),
+  monthlyFee: decimal("monthly_fee", { precision: 8, scale: 2 }).default("15.00"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_storefront_seller").on(table.sellerId),
+  index("idx_storefront_slug").on(table.slug),
+]);
+
+export const insertStorefrontSchema = createInsertSchema(storefronts).omit({ id: true, createdAt: true });
+export type Storefront = typeof storefronts.$inferSelect;
+export type InsertStorefront = z.infer<typeof insertStorefrontSchema>;
+
+// ============ COMMODITY PRICES ============
+export const commodityPrices = pgTable("commodity_prices", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  commodity: text("commodity").notNull(),
+  category: text("category"),
+  price: decimal("price", { precision: 12, scale: 2 }).notNull(),
+  currency: text("currency").default("USD"),
+  unit: text("unit").notNull(),
+  country: text("country"),
+  source: text("source"),
+  date: timestamp("date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_commodity_name").on(table.commodity),
+  index("idx_commodity_date").on(table.date),
+]);
+
+export const priceAlerts = pgTable("price_alerts", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  commodity: text("commodity").notNull(),
+  targetPrice: decimal("target_price", { precision: 12, scale: 2 }).notNull(),
+  direction: text("direction").notNull(),
+  isActive: boolean("is_active").default(true),
+  triggeredAt: timestamp("triggered_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_price_alert_user").on(table.userId),
+]);
+
+export const insertCommodityPriceSchema = createInsertSchema(commodityPrices).omit({ id: true, createdAt: true });
+export type CommodityPrice = typeof commodityPrices.$inferSelect;
+export type InsertCommodityPrice = z.infer<typeof insertCommodityPriceSchema>;
+export const insertPriceAlertSchema = createInsertSchema(priceAlerts).omit({ id: true, createdAt: true, triggeredAt: true });
+export type PriceAlert = typeof priceAlerts.$inferSelect;
+export type InsertPriceAlert = z.infer<typeof insertPriceAlertSchema>;
+
+// ============ VERIFIED BUYER PROGRAM ============
+export const buyerVerifications = pgTable("buyer_verifications", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  buyerId: varchar("buyer_id", { length: 255 }).notNull(),
+  businessName: text("business_name"),
+  businessRegNumber: text("business_reg_number"),
+  taxId: text("tax_id"),
+  documents: text("documents").array(),
+  verificationLevel: text("verification_level").default("basic"),
+  status: text("status").default("pending"),
+  fee: decimal("fee", { precision: 8, scale: 2 }).default("10.00"),
+  paidAt: timestamp("paid_at"),
+  reviewedBy: varchar("reviewed_by", { length: 255 }),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_buyer_verify_buyer").on(table.buyerId),
+  index("idx_buyer_verify_status").on(table.status),
+]);
+
+export const insertBuyerVerificationSchema = createInsertSchema(buyerVerifications).omit({ id: true, createdAt: true, reviewedAt: true, reviewedBy: true });
+export type BuyerVerification = typeof buyerVerifications.$inferSelect;
+export type InsertBuyerVerification = z.infer<typeof insertBuyerVerificationSchema>;
+
+// ============ BUSINESS COMMUNITY FORUM ============
+export const forumCategories = pgTable("forum_categories", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  name: text("name").notNull(),
+  slug: text("slug").unique().notNull(),
+  description: text("description"),
+  icon: text("icon"),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const forumPosts = pgTable("forum_posts", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  categoryId: integer("category_id").notNull(),
+  authorId: varchar("author_id", { length: 255 }).notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  isPinned: boolean("is_pinned").default(false),
+  isLocked: boolean("is_locked").default(false),
+  views: integer("views").default(0),
+  replyCount: integer("reply_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_forum_post_category").on(table.categoryId),
+  index("idx_forum_post_author").on(table.authorId),
+]);
+
+export const forumReplies = pgTable("forum_replies", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  postId: integer("post_id").notNull(),
+  authorId: varchar("author_id", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  likes: integer("likes").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_forum_reply_post").on(table.postId),
+]);
+
+export const insertForumCategorySchema = createInsertSchema(forumCategories).omit({ id: true, createdAt: true });
+export type ForumCategory = typeof forumCategories.$inferSelect;
+export type InsertForumCategory = z.infer<typeof insertForumCategorySchema>;
+export const insertForumPostSchema = createInsertSchema(forumPosts).omit({ id: true, createdAt: true, views: true, replyCount: true });
+export type ForumPost = typeof forumPosts.$inferSelect;
+export type InsertForumPost = z.infer<typeof insertForumPostSchema>;
+export const insertForumReplySchema = createInsertSchema(forumReplies).omit({ id: true, createdAt: true, likes: true });
+export type ForumReply = typeof forumReplies.$inferSelect;
+export type InsertForumReply = z.infer<typeof insertForumReplySchema>;
+
+// ============ LOGISTICS PARTNERS ============
+export const logisticsPartners = pgTable("logistics_partners", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  name: text("name").notNull(),
+  logo: text("logo"),
+  countries: text("countries").array(),
+  services: text("services").array(),
+  ratePerKg: decimal("rate_per_kg", { precision: 8, scale: 2 }).default("2.50"),
+  baseRate: decimal("base_rate", { precision: 8, scale: 2 }).default("5.00"),
+  estimatedDays: text("estimated_days").default("3-7"),
+  trackingUrl: text("tracking_url"),
+  isActive: boolean("is_active").default(true),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("8.00"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const logisticsBookings = pgTable("logistics_bookings", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  orderId: integer("order_id").notNull(),
+  partnerId: integer("partner_id").notNull(),
+  trackingNumber: text("tracking_number"),
+  weight: decimal("weight", { precision: 8, scale: 2 }),
+  cost: decimal("cost", { precision: 10, scale: 2 }),
+  commissionEarned: decimal("commission_earned", { precision: 10, scale: 2 }),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_logistics_booking_order").on(table.orderId),
+]);
+
+export const insertLogisticsPartnerSchema = createInsertSchema(logisticsPartners).omit({ id: true, createdAt: true });
+export type LogisticsPartner = typeof logisticsPartners.$inferSelect;
+export type InsertLogisticsPartner = z.infer<typeof insertLogisticsPartnerSchema>;
+export const insertLogisticsBookingSchema = createInsertSchema(logisticsBookings).omit({ id: true, createdAt: true });
+export type LogisticsBooking = typeof logisticsBookings.$inferSelect;
+export type InsertLogisticsBooking = z.infer<typeof insertLogisticsBookingSchema>;
+
+// ============ TRADE EVENTS & PROMOTIONS ============
+export const tradeEvents = pgTable("trade_events", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull(),
+  countries: text("countries").array(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  promotionRate: decimal("promotion_rate", { precision: 8, scale: 2 }).default("25.00"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const eventPromotions = pgTable("event_promotions", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  eventId: integer("event_id").notNull(),
+  sellerId: varchar("seller_id", { length: 255 }).notNull(),
+  productId: integer("product_id").notNull(),
+  promotionType: text("promotion_type").default("featured"),
+  fee: decimal("fee", { precision: 8, scale: 2 }).default("25.00"),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_event_promo_event").on(table.eventId),
+  index("idx_event_promo_seller").on(table.sellerId),
+]);
+
+export const insertTradeEventSchema = createInsertSchema(tradeEvents).omit({ id: true, createdAt: true });
+export type TradeEvent = typeof tradeEvents.$inferSelect;
+export type InsertTradeEvent = z.infer<typeof insertTradeEventSchema>;
+export const insertEventPromotionSchema = createInsertSchema(eventPromotions).omit({ id: true, createdAt: true });
+export type EventPromotion = typeof eventPromotions.$inferSelect;
+export type InsertEventPromotion = z.infer<typeof insertEventPromotionSchema>;
+
+// ============ AGRICULTURAL EXCHANGE ============
+export const agriListings = pgTable("agri_listings", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  sellerId: varchar("seller_id", { length: 255 }).notNull(),
+  cropType: text("crop_type").notNull(),
+  variety: text("variety"),
+  quantity: decimal("quantity", { precision: 12, scale: 2 }).notNull(),
+  unit: text("unit").notNull(),
+  pricePerUnit: decimal("price_per_unit", { precision: 12, scale: 2 }).notNull(),
+  qualityGrade: text("quality_grade").default("B"),
+  harvestDate: timestamp("harvest_date"),
+  location: text("location"),
+  certifications: text("certifications").array(),
+  images: text("images").array(),
+  minOrderQty: decimal("min_order_qty", { precision: 12, scale: 2 }).default("1"),
+  isAuction: boolean("is_auction").default(false),
+  auctionEndDate: timestamp("auction_end_date"),
+  currentBid: decimal("current_bid", { precision: 12, scale: 2 }),
+  highestBidderId: varchar("highest_bidder_id", { length: 255 }),
+  status: text("status").default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_agri_seller").on(table.sellerId),
+  index("idx_agri_crop").on(table.cropType),
+  index("idx_agri_status").on(table.status),
+]);
+
+export const agriBids = pgTable("agri_bids", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  listingId: integer("listing_id").notNull(),
+  bidderId: varchar("bidder_id", { length: 255 }).notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  quantity: decimal("quantity", { precision: 12, scale: 2 }),
+  message: text("message"),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_agri_bid_listing").on(table.listingId),
+  index("idx_agri_bid_bidder").on(table.bidderId),
+]);
+
+export const insertAgriListingSchema = createInsertSchema(agriListings).omit({ id: true, createdAt: true, currentBid: true, highestBidderId: true });
+export type AgriListing = typeof agriListings.$inferSelect;
+export type InsertAgriListing = z.infer<typeof insertAgriListingSchema>;
+export const insertAgriBidSchema = createInsertSchema(agriBids).omit({ id: true, createdAt: true });
+export type AgriBid = typeof agriBids.$inferSelect;
+export type InsertAgriBid = z.infer<typeof insertAgriBidSchema>;
+
+// ============ LIVE VIDEO SHOPPING ============
+export const liveSessions = pgTable("live_sessions", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  sellerId: varchar("seller_id", { length: 255 }).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: text("status").default("scheduled"),
+  scheduledAt: timestamp("scheduled_at"),
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
+  viewerCount: integer("viewer_count").default(0),
+  fee: decimal("fee", { precision: 8, scale: 2 }).default("10.00"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("idx_live_seller").on(table.sellerId),
+  index("idx_live_status").on(table.status),
+]);
+
+export const liveSessionProducts = pgTable("live_session_products", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  sessionId: integer("session_id").notNull(),
+  productId: integer("product_id").notNull(),
+  specialPrice: decimal("special_price", { precision: 10, scale: 2 }),
+  stock: integer("stock").default(0),
+}, (table) => [
+  index("idx_live_product_session").on(table.sessionId),
+]);
+
+export const insertLiveSessionSchema = createInsertSchema(liveSessions).omit({ id: true, createdAt: true, startedAt: true, endedAt: true, viewerCount: true });
+export type LiveSession = typeof liveSessions.$inferSelect;
+export type InsertLiveSession = z.infer<typeof insertLiveSessionSchema>;
+export const insertLiveSessionProductSchema = createInsertSchema(liveSessionProducts).omit({ id: true });
+export type LiveSessionProduct = typeof liveSessionProducts.$inferSelect;
+export type InsertLiveSessionProduct = z.infer<typeof insertLiveSessionProductSchema>;

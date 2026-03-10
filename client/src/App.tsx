@@ -51,6 +51,18 @@ import CheckoutSuccess from "@/pages/checkout-success";
 import CheckoutCancel from "@/pages/checkout-cancel";
 import GroupBuyPage from "@/pages/group-buy";
 import GroupBuyNew from "@/pages/group-buy-new";
+import ReferralsPage from "@/pages/referrals";
+import BnplPage from "@/pages/bnpl";
+import TradeDocumentsPage from "@/pages/trade-documents";
+import StorefrontBuilder from "@/pages/storefront-builder";
+import StorefrontView from "@/pages/storefront-view";
+import CommodityPricesPage from "@/pages/commodity-prices";
+import BuyerVerificationPage from "@/pages/buyer-verification";
+import CommunityPage from "@/pages/community";
+import LogisticsPartnersPage from "@/pages/logistics-partners";
+import TradeEventsPage from "@/pages/trade-events";
+import AgriExchangePage from "@/pages/agri-exchange";
+import LiveShoppingPage from "@/pages/live-shopping";
 
 function Router() {
   return (
@@ -92,6 +104,18 @@ function Router() {
       <Route path="/checkout/cancel" component={CheckoutCancel} />
       <Route path="/group-buy/new" component={GroupBuyNew} />
       <Route path="/group-buy/:id" component={GroupBuyPage} />
+      <Route path="/referrals" component={ReferralsPage} />
+      <Route path="/bnpl" component={BnplPage} />
+      <Route path="/trade-documents" component={TradeDocumentsPage} />
+      <Route path="/storefront-builder" component={StorefrontBuilder} />
+      <Route path="/storefront/:slug" component={StorefrontView} />
+      <Route path="/commodity-prices" component={CommodityPricesPage} />
+      <Route path="/buyer-verification" component={BuyerVerificationPage} />
+      <Route path="/community" component={CommunityPage} />
+      <Route path="/logistics" component={LogisticsPartnersPage} />
+      <Route path="/trade-events" component={TradeEventsPage} />
+      <Route path="/agri-exchange" component={AgriExchangePage} />
+      <Route path="/live-shopping" component={LiveShoppingPage} />
       <Route component={NotFound} />
     </Switch>
   );

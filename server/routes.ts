@@ -7284,14 +7284,931 @@ Only return valid JSON, no other text or markdown.`,
     }
   };
 
+  // ============ MARKETING AUTOMATION ENGINE ============
+  const MARKETING_CHECK_INTERVAL = 60 * 60 * 1000; // Check every hour
+  const runMarketingEngine = async () => {
+    try {
+      const { runDueAutomations, processScheduledPosts, seedDefaultAutomations } = await import("./marketingEngine");
+      await seedDefaultAutomations();
+      await runDueAutomations();
+      await processScheduledPosts();
+    } catch (error) {
+      console.error("[Marketing Engine] Error:", error);
+    }
+  };
+
+  // ============ REFERRAL SYSTEM ============
+  app.get("/api/referrals/my-code", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+      const existing = await storage.getReferralsByUser(userId);
+      const activeReferral = existing.find(r => r.status === "pending" && !r.referredUserId);
+
+      if (activeReferral) {
+        return res.json({ success: true, code: activeReferral.referralCode });
+      }
+
+      const { generateReferralCode } = await import("./marketingEngine");
+      const code = await generateReferralCode(userId);
+      await storage.createReferral({
+        referrerId: userId,
+        referralCode: code,
+        status: "pending",
+      });
+
+      res.json({ success: true, code });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to get referral code" });
+    }
+  });
+
+  app.get("/api/referrals/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const stats = await storage.getUserReferralStats(userId);
+      const referrals = await storage.getReferralsByUser(userId);
+      res.json({ success: true, stats, referrals });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to get referral stats" });
+    }
+  });
+
+  app.post("/api/referrals/track", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+      const { code } = req.body;
+      if (!code || typeof code !== "string") return res.status(400).json({ error: "Referral code required" });
+
+      const referral = await storage.getReferralByCode(code);
+      if (!referral) return res.status(404).json({ error: "Invalid referral code" });
+
+      if (referral.referrerId === userId) return res.status(400).json({ error: "Cannot use your own referral code" });
+
+      if (!referral.referredUserId && !referral.referredEmail) {
+        const user = await storage.getUser(userId);
+        await storage.updateReferral(referral.id, {
+          referredUserId: userId,
+          referredEmail: user?.email || null,
+          status: "signed_up",
+          convertedAt: new Date(),
+        });
+      }
+
+      res.json({ success: true, message: "Referral tracked" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to track referral" });
+    }
+  });
+
+  // ============ SOCIAL MEDIA CONTENT GENERATOR ============
+  app.get("/api/admin/marketing/social-content", isAdminSession, async (req: any, res) => {
+    try {
+      const { generateSocialContent } = await import("./marketingEngine");
+      const type = (req.query.type as string) || "all";
+      const content = await generateSocialContent(type);
+      res.json({ success: true, data: content });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to generate content" });
+    }
+  });
+
+  app.get("/api/admin/marketing/whatsapp-templates", isAdminSession, async (req: any, res) => {
+    try {
+      const { generateWhatsAppBroadcastTemplates } = await import("./marketingEngine");
+      const templates = await generateWhatsAppBroadcastTemplates();
+      res.json({ success: true, data: templates });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to generate templates" });
+    }
+  });
+
+  // Social Posts CRUD
+  app.get("/api/admin/marketing/social-posts", isAdminSession, async (req: any, res) => {
+    try {
+      const { platform, status } = req.query;
+      const posts = await storage.getSocialPosts({
+        platform: platform as string,
+        status: status as string,
+        limit: 100,
+      });
+      res.json({ success: true, data: posts });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch social posts" });
+    }
+  });
+
+  app.post("/api/admin/marketing/social-posts", isAdminSession, async (req: any, res) => {
+    try {
+      const post = await storage.createSocialPost(req.body);
+      res.json({ success: true, data: post });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to create social post" });
+    }
+  });
+
+  app.post("/api/admin/marketing/social-posts/generate-and-save", isAdminSession, async (req: any, res) => {
+    try {
+      const { generateSocialContent } = await import("./marketingEngine");
+      const type = req.body.type || "all";
+      const content = await generateSocialContent(type);
+
+      let saved = 0;
+      for (const post of content) {
+        await storage.createSocialPost({
+          ...post,
+          status: "draft",
+          shareUrl: req.body.baseUrl || "",
+        });
+        saved++;
+      }
+
+      res.json({ success: true, saved, total: content.length });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to generate and save content" });
+    }
+  });
+
+  app.delete("/api/admin/marketing/social-posts/:id", isAdminSession, async (req: any, res) => {
+    try {
+      await storage.deleteSocialPost(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to delete social post" });
+    }
+  });
+
+  // Marketing Automations CRUD
+  app.get("/api/admin/marketing/automations", isAdminSession, async (req: any, res) => {
+    try {
+      const automations = await storage.getMarketingAutomations();
+      res.json({ success: true, data: automations });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch automations" });
+    }
+  });
+
+  app.post("/api/admin/marketing/automations", isAdminSession, async (req: any, res) => {
+    try {
+      const automation = await storage.createMarketingAutomation(req.body);
+      res.json({ success: true, data: automation });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to create automation" });
+    }
+  });
+
+  app.patch("/api/admin/marketing/automations/:id", isAdminSession, async (req: any, res) => {
+    try {
+      const automation = await storage.updateMarketingAutomation(parseInt(req.params.id), req.body);
+      res.json({ success: true, data: automation });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to update automation" });
+    }
+  });
+
+  app.delete("/api/admin/marketing/automations/:id", isAdminSession, async (req: any, res) => {
+    try {
+      await storage.deleteMarketingAutomation(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to delete automation" });
+    }
+  });
+
+  app.post("/api/admin/marketing/automations/:id/run-now", isAdminSession, async (req: any, res) => {
+    try {
+      const { runDueAutomations } = await import("./marketingEngine");
+      const automation = await storage.getMarketingAutomation(parseInt(req.params.id));
+      if (!automation) return res.status(404).json({ error: "Automation not found" });
+
+      await storage.updateMarketingAutomation(automation.id, { nextRunAt: new Date() });
+      await runDueAutomations();
+
+      res.json({ success: true, message: `Automation "${automation.name}" executed` });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to run automation" });
+    }
+  });
+
+  app.post("/api/admin/marketing/send-digest", isAdminSession, async (req: any, res) => {
+    try {
+      const { runAutomatedEmailDigest } = await import("./marketingEngine");
+      const result = await runAutomatedEmailDigest();
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to send digest" });
+    }
+  });
+
+  // ============ MARKETING STATS ============
+  app.get("/api/admin/marketing/stats", isAdminSession, async (req: any, res) => {
+    try {
+      const automations = await storage.getMarketingAutomations();
+      const socialPosts = await storage.getSocialPosts({ limit: 1000 });
+      const promoStats = await storage.getPromoEmailStats();
+
+      const totalEmailsSent = automations.reduce((sum, a) => sum + (a.totalSent || 0), 0);
+      const activeAutomations = automations.filter(a => a.isActive).length;
+      const totalSocialPosts = socialPosts.length;
+      const postedPosts = socialPosts.filter(p => p.status === "posted").length;
+
+      res.json({
+        success: true,
+        data: {
+          totalEmailsSent: totalEmailsSent + promoStats.total,
+          emailsLast24h: promoStats.last24h,
+          emailsLast7d: promoStats.last7d,
+          activeAutomations,
+          totalAutomations: automations.length,
+          totalSocialPosts,
+          postedPosts,
+          scheduledPosts: socialPosts.filter(p => p.status === "scheduled").length,
+          draftPosts: socialPosts.filter(p => p.status === "draft").length,
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to get marketing stats" });
+    }
+  });
+
+  // ============ BNPL (BUY NOW PAY LATER) ============
+  app.get("/api/bnpl/plans", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const plans = await storage.getBnplPlansByBuyer(userId);
+      res.json({ success: true, data: plans });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/bnpl/plans/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const plan = await storage.getBnplPlan(parseInt(req.params.id));
+      if (!plan) return res.status(404).json({ error: "Plan not found" });
+      if (plan.buyerId !== userId) return res.status(403).json({ error: "Access denied" });
+      const payments = await storage.getBnplPaymentsByPlan(plan.id);
+      res.json({ success: true, data: { plan, payments } });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/bnpl/apply", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { totalAmount, installments, orderId } = req.body;
+      if (!totalAmount || !installments) return res.status(400).json({ error: "Missing required fields" });
+
+      const interestRate = installments <= 3 ? 3.0 : installments <= 6 ? 4.5 : 6.0;
+      const totalWithInterest = parseFloat(totalAmount) * (1 + interestRate / 100);
+      const installmentAmount = (totalWithInterest / installments).toFixed(2);
+
+      const plan = await storage.createBnplPlan({
+        buyerId: userId,
+        orderId: orderId || null,
+        totalAmount: totalAmount.toString(),
+        installments,
+        installmentAmount,
+        interestRate: interestRate.toString(),
+        status: "active",
+        nextPaymentDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      });
+
+      for (let i = 1; i <= installments; i++) {
+        const dueDate = new Date(Date.now() + i * 30 * 24 * 60 * 60 * 1000);
+        await storage.createBnplPayment({
+          planId: plan.id,
+          installmentNumber: i,
+          amount: installmentAmount,
+          status: "pending",
+          dueDate,
+        });
+      }
+
+      res.json({ success: true, data: plan });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/bnpl/payments/:id/pay", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+      const allPlans = await storage.getBnplPlansByBuyer(userId);
+      const payments = await Promise.all(allPlans.map(p => storage.getBnplPaymentsByPlan(p.id)));
+      const allPayments = payments.flat();
+      const targetPayment = allPayments.find(p => p.id === parseInt(req.params.id));
+      if (!targetPayment) return res.status(403).json({ error: "Payment not found or access denied" });
+
+      const payment = await storage.updateBnplPayment(parseInt(req.params.id), {
+        status: "paid",
+        paidAt: new Date(),
+      });
+      if (!payment) return res.status(404).json({ error: "Payment not found" });
+
+      const plan = await storage.getBnplPlan(payment.planId);
+      if (plan) {
+        const newPaid = (plan.paidInstallments || 0) + 1;
+        const nextDate = newPaid >= plan.installments ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        await storage.updateBnplPlan(plan.id, {
+          paidInstallments: newPaid,
+          status: newPaid >= plan.installments ? "completed" : "active",
+          nextPaymentDate: nextDate,
+        });
+      }
+
+      res.json({ success: true, data: payment });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/bnpl/eligibility", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const profile = await storage.getUserProfile(userId);
+      const activePlans = (await storage.getBnplPlansByBuyer(userId)).filter(p => p.status === "active");
+      const isEligible = profile && activePlans.length < 3;
+      const maxAmount = activePlans.length === 0 ? 500 : activePlans.length === 1 ? 300 : 100;
+      res.json({ success: true, data: { eligible: isEligible, maxAmount, activePlans: activePlans.length, reason: !isEligible ? "Maximum active plans reached" : null } });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ TRADE DOCUMENTS ============
+  app.get("/api/trade-documents/order/:orderId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const order = await storage.getOrder(parseInt(req.params.orderId));
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      if (order.buyerId !== userId && order.sellerId !== userId) return res.status(403).json({ error: "Access denied" });
+      const docs = await storage.getTradeDocumentsByOrder(parseInt(req.params.orderId));
+      res.json({ success: true, data: docs });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/trade-documents/generate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { orderId, type } = req.body;
+      if (!orderId || !type) return res.status(400).json({ error: "Order ID and document type required" });
+
+      const order = await storage.getOrder(parseInt(orderId));
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      if (order.buyerId !== userId && order.sellerId !== userId) return res.status(403).json({ error: "Access denied" });
+
+      const items = await storage.getOrderItems(parseInt(orderId));
+      const docNumber = `${type.toUpperCase().replace(/_/g, '')}-${Date.now()}-${orderId}`;
+
+      const feeMap: Record<string, string> = { commercial_invoice: "3.00", packing_list: "2.00", certificate_of_origin: "5.00", proforma_invoice: "2.50" };
+
+      const doc = await storage.createTradeDocument({
+        orderId: parseInt(orderId),
+        type,
+        documentNumber: docNumber,
+        data: { order, items, generatedAt: new Date().toISOString(), type },
+        generatedBy: userId,
+        fee: feeMap[type] || "3.00",
+        status: "generated",
+      });
+
+      res.json({ success: true, data: doc });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/trade-documents/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const doc = await storage.getTradeDocument(parseInt(req.params.id));
+      if (!doc) return res.status(404).json({ error: "Document not found" });
+      res.json({ success: true, data: doc });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ STOREFRONTS ============
+  app.get("/api/storefronts/:slug", async (req: any, res) => {
+    try {
+      const storefront = await storage.getStorefrontBySlug(req.params.slug);
+      if (!storefront || !storefront.isPublished) return res.status(404).json({ error: "Storefront not found" });
+      const profile = await storage.getUserProfile(storefront.sellerId);
+      const products = await storage.getProducts();
+      const sellerProducts = products.filter(p => p.sellerId === storefront.sellerId);
+      res.json({ success: true, data: { storefront, profile, products: sellerProducts } });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/my-storefront", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const storefront = await storage.getStorefrontBySeller(userId);
+      res.json({ success: true, data: storefront || null });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/storefronts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { name, description, theme } = req.body;
+      if (!name) return res.status(400).json({ error: "Store name required" });
+
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const existing = await storage.getStorefrontBySlug(slug);
+      if (existing) return res.status(400).json({ error: "Store name already taken" });
+
+      const storefront = await storage.createStorefront({
+        sellerId: userId,
+        name,
+        slug,
+        description: description || "",
+        theme: theme || { primaryColor: "#D4A574", secondaryColor: "#2D5016", layout: "grid" },
+        isPublished: false,
+      });
+
+      res.json({ success: true, data: storefront });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/storefronts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const existing = await storage.getStorefrontBySeller(userId);
+      if (!existing || existing.id !== parseInt(req.params.id)) return res.status(403).json({ error: "Access denied" });
+      const storefront = await storage.updateStorefront(parseInt(req.params.id), req.body);
+      if (!storefront) return res.status(404).json({ error: "Storefront not found" });
+      res.json({ success: true, data: storefront });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ COMMODITY PRICES ============
+  app.get("/api/commodities", async (_req: any, res) => {
+    try {
+      const prices = await storage.getLatestCommodityPrices();
+      res.json({ success: true, data: prices });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/price-alerts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const alerts = await storage.getPriceAlertsByUser(userId);
+      res.json({ success: true, data: alerts });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/price-alerts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { commodity, targetPrice, direction } = req.body;
+      if (!commodity || !targetPrice || !direction) return res.status(400).json({ error: "Missing required fields" });
+
+      const alert = await storage.createPriceAlert({ userId, commodity, targetPrice: targetPrice.toString(), direction });
+      res.json({ success: true, data: alert });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/price-alerts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const userAlerts = await storage.getPriceAlertsByUser(userId);
+      if (!userAlerts.find(a => a.id === parseInt(req.params.id))) return res.status(403).json({ error: "Access denied" });
+      await storage.deletePriceAlert(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ VERIFIED BUYER PROGRAM ============
+  app.get("/api/buyer-verification", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const verification = await storage.getBuyerVerification(userId);
+      res.json({ success: true, data: verification || null });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/buyer-verification/apply", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+      const existing = await storage.getBuyerVerification(userId);
+      if (existing) return res.status(400).json({ error: "Verification already submitted" });
+
+      const { businessName, businessRegNumber, taxId, verificationLevel } = req.body;
+      const feeMap: Record<string, string> = { basic: "5.00", verified: "10.00", premium: "15.00" };
+
+      const verification = await storage.createBuyerVerification({
+        buyerId: userId,
+        businessName,
+        businessRegNumber,
+        taxId,
+        verificationLevel: verificationLevel || "basic",
+        status: "pending",
+        fee: feeMap[verificationLevel || "basic"] || "10.00",
+      });
+
+      res.json({ success: true, data: verification });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/admin/buyer-verifications", isAdminSession, async (_req: any, res) => {
+    try {
+      const verifications = await storage.getBuyerVerifications();
+      res.json({ success: true, data: verifications });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/admin/buyer-verifications/:id", isAdminSession, async (req: any, res) => {
+    try {
+      const { status, reviewedBy } = req.body;
+      const verification = await storage.updateBuyerVerification(parseInt(req.params.id), {
+        status,
+        reviewedBy: reviewedBy || "admin",
+        reviewedAt: new Date(),
+        paidAt: status === "approved" ? new Date() : undefined,
+      });
+      res.json({ success: true, data: verification });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ BUSINESS COMMUNITY FORUM ============
+  app.get("/api/forum/categories", async (_req: any, res) => {
+    try {
+      const categories = await storage.getForumCategories();
+      res.json({ success: true, data: categories });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/forum/posts", async (req: any, res) => {
+    try {
+      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId) : undefined;
+      const posts = await storage.getForumPosts(categoryId);
+      res.json({ success: true, data: posts });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/forum/posts/:id", async (req: any, res) => {
+    try {
+      const post = await storage.getForumPost(parseInt(req.params.id));
+      if (!post) return res.status(404).json({ error: "Post not found" });
+      await storage.updateForumPost(post.id, { views: (post.views || 0) + 1 });
+      const replies = await storage.getForumReplies(post.id);
+      res.json({ success: true, data: { post, replies } });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/forum/posts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { categoryId, title, content } = req.body;
+      if (!categoryId || !title || !content) return res.status(400).json({ error: "Missing required fields" });
+
+      const post = await storage.createForumPost({ categoryId: parseInt(categoryId), authorId: userId, title, content });
+      res.json({ success: true, data: post });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/forum/posts/:id/replies", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { content } = req.body;
+      if (!content) return res.status(400).json({ error: "Content required" });
+
+      const reply = await storage.createForumReply({ postId: parseInt(req.params.id), authorId: userId, content });
+      await storage.getForumPost(parseInt(req.params.id)).then(post => {
+        if (post) storage.updateForumPost(post.id, { replyCount: (post.replyCount || 0) + 1 });
+      });
+      res.json({ success: true, data: reply });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ LOGISTICS PARTNERS ============
+  app.get("/api/logistics-partners", async (req: any, res) => {
+    try {
+      const country = req.query.country as string;
+      const partners = country ? await storage.getLogisticsPartnersByCountry(country) : await storage.getLogisticsPartners();
+      res.json({ success: true, data: partners });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/logistics-bookings", isAuthenticated, async (req: any, res) => {
+    try {
+      const { orderId, partnerId, weight } = req.body;
+      if (!orderId || !partnerId) return res.status(400).json({ error: "Missing required fields" });
+
+      const partners = await storage.getLogisticsPartners();
+      const partner = partners.find(p => p.id === parseInt(partnerId));
+      if (!partner) return res.status(404).json({ error: "Partner not found" });
+
+      const weightKg = parseFloat(weight || "1");
+      const cost = parseFloat(partner.baseRate || "5") + weightKg * parseFloat(partner.ratePerKg || "2.5");
+      const commission = cost * parseFloat(partner.commissionRate || "8") / 100;
+      const trackingNumber = `GA-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+
+      const booking = await storage.createLogisticsBooking({
+        orderId: parseInt(orderId),
+        partnerId: parseInt(partnerId),
+        trackingNumber,
+        weight: weightKg.toString(),
+        cost: cost.toFixed(2),
+        commissionEarned: commission.toFixed(2),
+        status: "pending",
+      });
+
+      res.json({ success: true, data: booking });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ TRADE EVENTS ============
+  app.get("/api/trade-events", async (_req: any, res) => {
+    try {
+      const events = await storage.getActiveTradeEvents();
+      res.json({ success: true, data: events });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/trade-events/all", async (_req: any, res) => {
+    try {
+      const events = await storage.getTradeEvents();
+      res.json({ success: true, data: events });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/trade-events/promote", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { eventId, productId, promotionType } = req.body;
+      if (!eventId || !productId) return res.status(400).json({ error: "Missing required fields" });
+
+      const promo = await storage.createEventPromotion({
+        eventId: parseInt(eventId),
+        sellerId: userId,
+        productId: parseInt(productId),
+        promotionType: promotionType || "featured",
+        fee: "25.00",
+        status: "pending",
+      });
+
+      res.json({ success: true, data: promo });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/trade-events/:id/promotions", async (req: any, res) => {
+    try {
+      const promos = await storage.getEventPromotions(parseInt(req.params.id));
+      res.json({ success: true, data: promos });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ AGRICULTURAL EXCHANGE ============
+  app.get("/api/agri-exchange", async (_req: any, res) => {
+    try {
+      const listings = await storage.getAgriListings();
+      res.json({ success: true, data: listings });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/agri-exchange/:id", async (req: any, res) => {
+    try {
+      const listing = await storage.getAgriListing(parseInt(req.params.id));
+      if (!listing) return res.status(404).json({ error: "Listing not found" });
+      const bids = await storage.getAgriBids(listing.id);
+      res.json({ success: true, data: { listing, bids } });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agri-exchange", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { cropType, variety, quantity, unit, pricePerUnit, qualityGrade, harvestDate, location, certifications, minOrderQty, isAuction, auctionEndDate } = req.body;
+      if (!cropType || !quantity || !unit || !pricePerUnit) return res.status(400).json({ error: "Missing required fields" });
+
+      const listing = await storage.createAgriListing({
+        sellerId: userId,
+        cropType,
+        variety,
+        quantity: quantity.toString(),
+        unit,
+        pricePerUnit: pricePerUnit.toString(),
+        qualityGrade: qualityGrade || "B",
+        harvestDate: harvestDate ? new Date(harvestDate) : null,
+        location,
+        certifications,
+        minOrderQty: (minOrderQty || 1).toString(),
+        isAuction: isAuction || false,
+        auctionEndDate: auctionEndDate ? new Date(auctionEndDate) : null,
+        status: "active",
+      });
+
+      res.json({ success: true, data: listing });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/agri-exchange/:id/bid", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const listing = await storage.getAgriListing(parseInt(req.params.id));
+      if (!listing) return res.status(404).json({ error: "Listing not found" });
+
+      const { amount, quantity, message } = req.body;
+      if (!amount) return res.status(400).json({ error: "Bid amount required" });
+
+      const bid = await storage.createAgriBid({
+        listingId: listing.id,
+        bidderId: userId,
+        amount: amount.toString(),
+        quantity: quantity?.toString(),
+        message,
+        status: "pending",
+      });
+
+      if (listing.isAuction && (!listing.currentBid || parseFloat(amount) > parseFloat(listing.currentBid))) {
+        await storage.updateAgriListing(listing.id, {
+          currentBid: amount.toString(),
+          highestBidderId: userId,
+        });
+      }
+
+      res.json({ success: true, data: bid });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============ LIVE VIDEO SHOPPING ============
+  app.get("/api/live-sessions", async (_req: any, res) => {
+    try {
+      const sessions = await storage.getLiveSessions();
+      res.json({ success: true, data: sessions });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/live-sessions/:id", async (req: any, res) => {
+    try {
+      const session = await storage.getLiveSession(parseInt(req.params.id));
+      if (!session) return res.status(404).json({ error: "Session not found" });
+      const sessionProducts = await storage.getLiveSessionProducts(session.id);
+      res.json({ success: true, data: { session, products: sessionProducts } });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/live-sessions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { title, description, scheduledAt, fee } = req.body;
+      if (!title) return res.status(400).json({ error: "Title required" });
+
+      const session = await storage.createLiveSession({
+        sellerId: userId,
+        title,
+        description,
+        status: "scheduled",
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
+        fee: fee || "10.00",
+      });
+
+      res.json({ success: true, data: session });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/live-sessions/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const existing = await storage.getLiveSession(parseInt(req.params.id));
+      if (!existing) return res.status(404).json({ error: "Session not found" });
+      if (existing.sellerId !== userId) return res.status(403).json({ error: "Access denied" });
+      const session = await storage.updateLiveSession(parseInt(req.params.id), req.body);
+      if (!session) return res.status(404).json({ error: "Session not found" });
+      res.json({ success: true, data: session });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/live-sessions/:id/products", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const existing = await storage.getLiveSession(parseInt(req.params.id));
+      if (!existing) return res.status(404).json({ error: "Session not found" });
+      if (existing.sellerId !== userId) return res.status(403).json({ error: "Access denied" });
+      const { productId, specialPrice, stock } = req.body;
+      if (!productId) return res.status(400).json({ error: "Product ID required" });
+
+      const product = await storage.createLiveSessionProduct({
+        sessionId: parseInt(req.params.id),
+        productId: parseInt(productId),
+        specialPrice: specialPrice?.toString(),
+        stock: stock || 0,
+      });
+
+      res.json({ success: true, data: product });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Run initial checks after 30 seconds, then every 6 hours
   setTimeout(() => {
     checkStaleShipments();
     checkDisputeAutoRefunds();
     checkBrowseReminders();
+    runMarketingEngine();
     setInterval(checkStaleShipments, STALE_CHECK_INTERVAL);
     setInterval(checkDisputeAutoRefunds, STALE_CHECK_INTERVAL);
     setInterval(checkBrowseReminders, BROWSE_REMINDER_INTERVAL);
+    setInterval(runMarketingEngine, MARKETING_CHECK_INTERVAL);
   }, 30000);
 
   return httpServer;

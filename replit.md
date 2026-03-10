@@ -41,6 +41,17 @@ Preferred communication style: Simple, everyday language.
 - **Enhanced Offline PWA**: Service worker for image and API response caching, an offline action queue for non-GET requests, and an offline indicator.
 - **Admin Authentication**: Separate, session-based admin authentication with roles and secure password management.
 - **Scalability**: Database optimization, in-memory caching, API rate limiting, asynchronous job queues, and pagination.
+- **Revenue-Generating Features (10 New Competitive Modules)**:
+    - **Buy Now Pay Later (BNPL)**: Trade finance with 3/6/12 month installments (3-6% interest), eligibility checks, max 3 active plans. Tables: `bnpl_plans`, `bnpl_payments`. Route: `/bnpl`.
+    - **Trade Document Generator**: Auto-generate commercial invoices ($3), packing lists ($2), certificates of origin ($5), proforma invoices ($2.50). Table: `trade_documents`. Route: `/trade-documents`.
+    - **Storefront Builder**: Branded seller storefronts with 6 African-themed color palettes, $15/month fee. Table: `storefronts`. Routes: `/storefront-builder`, `/storefront/:slug`.
+    - **Commodity Price Tracker**: Real-time prices for 20 African commodities (agriculture + minerals) with price alerts. Tables: `commodity_prices`, `price_alerts`. Route: `/commodity-prices`.
+    - **Verified Buyer Program**: 3-tier buyer verification (Basic $5, Verified $10, Premium $15) with admin approval. Table: `buyer_verifications`. Route: `/buyer-verification`.
+    - **Business Community Forum**: Full forum with 8 seeded categories, posts, replies, pinning, locking. Tables: `forum_categories`, `forum_posts`, `forum_replies`. Route: `/community`.
+    - **Logistics Partner Dashboard**: 8 seeded African logistics partners with booking, tracking, and commission tracking. Tables: `logistics_partners`, `logistics_bookings`. Route: `/logistics`.
+    - **Seasonal & Cultural Events Calendar**: African trade events, harvest seasons, festivals with product promotion ($25/promotion). Tables: `trade_events`, `event_promotions`. Route: `/trade-events`.
+    - **Agricultural Exchange**: Crop listings with quality grading (A/B/C), auction system, bidding. Tables: `agri_listings`, `agri_bids`. Route: `/agri-exchange`.
+    - **Live Video Shopping**: Session scheduling, go-live management, featured products with special pricing, $10/session fee. Tables: `live_sessions`, `live_session_products`. Route: `/live-shopping`.
 
 ## External Dependencies
 

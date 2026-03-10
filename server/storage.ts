@@ -69,6 +69,40 @@ import {
   type GroupBuyParticipant, type InsertGroupBuyParticipant,
   afcftaCertificates,
   type AfcftaCertificate, type InsertAfcftaCertificate,
+  referrals,
+  type Referral, type InsertReferral,
+  socialPosts,
+  type SocialPost, type InsertSocialPost,
+  marketingAutomations,
+  type MarketingAutomation, type InsertMarketingAutomation,
+  bnplPlans, bnplPayments,
+  type BnplPlan, type InsertBnplPlan,
+  type BnplPayment, type InsertBnplPayment,
+  tradeDocuments,
+  type TradeDocument, type InsertTradeDocument,
+  storefronts,
+  type Storefront, type InsertStorefront,
+  commodityPrices, priceAlerts,
+  type CommodityPrice, type InsertCommodityPrice,
+  type PriceAlert, type InsertPriceAlert,
+  buyerVerifications,
+  type BuyerVerification, type InsertBuyerVerification,
+  forumCategories, forumPosts, forumReplies,
+  type ForumCategory, type InsertForumCategory,
+  type ForumPost, type InsertForumPost,
+  type ForumReply, type InsertForumReply,
+  logisticsPartners, logisticsBookings,
+  type LogisticsPartner, type InsertLogisticsPartner,
+  type LogisticsBooking, type InsertLogisticsBooking,
+  tradeEvents, eventPromotions,
+  type TradeEvent, type InsertTradeEvent,
+  type EventPromotion, type InsertEventPromotion,
+  agriListings, agriBids,
+  type AgriListing, type InsertAgriListing,
+  type AgriBid, type InsertAgriBid,
+  liveSessions, liveSessionProducts,
+  type LiveSession, type InsertLiveSession,
+  type LiveSessionProduct, type InsertLiveSessionProduct,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, not, ilike, desc, asc, sql, inArray, gte, lte } from "drizzle-orm";
@@ -435,6 +469,105 @@ export interface IStorage {
   getAfcftaCertificatesBySeller(sellerId: string): Promise<AfcftaCertificate[]>;
   getAllAfcftaCertificates(status?: string): Promise<AfcftaCertificate[]>;
   updateAfcftaCertificate(id: number, data: Partial<AfcftaCertificate>): Promise<AfcftaCertificate | undefined>;
+
+  // Referrals
+  createReferral(data: InsertReferral): Promise<Referral>;
+  getReferralByCode(code: string): Promise<Referral | undefined>;
+  getReferralsByUser(userId: string): Promise<Referral[]>;
+  getUserReferralStats(userId: string): Promise<{ total: number; converted: number; rewarded: number; totalEarnings: string }>;
+  updateReferral(id: number, data: Partial<Referral>): Promise<Referral | undefined>;
+
+  // Social Posts
+  createSocialPost(data: InsertSocialPost): Promise<SocialPost>;
+  getSocialPosts(filters?: { platform?: string; status?: string; limit?: number }): Promise<SocialPost[]>;
+  getSocialPost(id: number): Promise<SocialPost | undefined>;
+  updateSocialPost(id: number, data: Partial<SocialPost>): Promise<SocialPost | undefined>;
+  deleteSocialPost(id: number): Promise<void>;
+  getScheduledPosts(): Promise<SocialPost[]>;
+
+  // Marketing Automations
+  createMarketingAutomation(data: InsertMarketingAutomation): Promise<MarketingAutomation>;
+  getMarketingAutomations(): Promise<MarketingAutomation[]>;
+  getMarketingAutomation(id: number): Promise<MarketingAutomation | undefined>;
+  updateMarketingAutomation(id: number, data: Partial<MarketingAutomation>): Promise<MarketingAutomation | undefined>;
+  deleteMarketingAutomation(id: number): Promise<void>;
+  getDueAutomations(): Promise<MarketingAutomation[]>;
+
+  // BNPL
+  createBnplPlan(plan: InsertBnplPlan): Promise<BnplPlan>;
+  getBnplPlan(id: number): Promise<BnplPlan | undefined>;
+  getBnplPlansByBuyer(buyerId: string): Promise<BnplPlan[]>;
+  updateBnplPlan(id: number, data: Partial<BnplPlan>): Promise<BnplPlan | undefined>;
+  createBnplPayment(payment: InsertBnplPayment): Promise<BnplPayment>;
+  getBnplPaymentsByPlan(planId: number): Promise<BnplPayment[]>;
+  updateBnplPayment(id: number, data: Partial<BnplPayment>): Promise<BnplPayment | undefined>;
+
+  // Trade Documents
+  createTradeDocument(doc: InsertTradeDocument): Promise<TradeDocument>;
+  getTradeDocumentsByOrder(orderId: number): Promise<TradeDocument[]>;
+  getTradeDocument(id: number): Promise<TradeDocument | undefined>;
+
+  // Storefronts
+  createStorefront(sf: InsertStorefront): Promise<Storefront>;
+  getStorefrontBySeller(sellerId: string): Promise<Storefront | undefined>;
+  getStorefrontBySlug(slug: string): Promise<Storefront | undefined>;
+  updateStorefront(id: number, data: Partial<Storefront>): Promise<Storefront | undefined>;
+
+  // Commodity Prices
+  createCommodityPrice(price: InsertCommodityPrice): Promise<CommodityPrice>;
+  getCommodityPrices(): Promise<CommodityPrice[]>;
+  getLatestCommodityPrices(): Promise<CommodityPrice[]>;
+  createPriceAlert(alert: InsertPriceAlert): Promise<PriceAlert>;
+  getPriceAlertsByUser(userId: string): Promise<PriceAlert[]>;
+  updatePriceAlert(id: number, data: Partial<PriceAlert>): Promise<PriceAlert | undefined>;
+  deletePriceAlert(id: number): Promise<void>;
+
+  // Buyer Verifications
+  createBuyerVerification(v: InsertBuyerVerification): Promise<BuyerVerification>;
+  getBuyerVerification(buyerId: string): Promise<BuyerVerification | undefined>;
+  getBuyerVerifications(): Promise<BuyerVerification[]>;
+  updateBuyerVerification(id: number, data: Partial<BuyerVerification>): Promise<BuyerVerification | undefined>;
+
+  // Forum
+  createForumCategory(cat: InsertForumCategory): Promise<ForumCategory>;
+  getForumCategories(): Promise<ForumCategory[]>;
+  createForumPost(post: InsertForumPost): Promise<ForumPost>;
+  getForumPosts(categoryId?: number): Promise<ForumPost[]>;
+  getForumPost(id: number): Promise<ForumPost | undefined>;
+  updateForumPost(id: number, data: Partial<ForumPost>): Promise<ForumPost | undefined>;
+  createForumReply(reply: InsertForumReply): Promise<ForumReply>;
+  getForumReplies(postId: number): Promise<ForumReply[]>;
+
+  // Logistics Partners
+  createLogisticsPartner(partner: InsertLogisticsPartner): Promise<LogisticsPartner>;
+  getLogisticsPartners(): Promise<LogisticsPartner[]>;
+  getLogisticsPartnersByCountry(country: string): Promise<LogisticsPartner[]>;
+  createLogisticsBooking(booking: InsertLogisticsBooking): Promise<LogisticsBooking>;
+  getLogisticsBookingsByOrder(orderId: number): Promise<LogisticsBooking[]>;
+
+  // Trade Events
+  createTradeEvent(event: InsertTradeEvent): Promise<TradeEvent>;
+  getTradeEvents(): Promise<TradeEvent[]>;
+  getActiveTradeEvents(): Promise<TradeEvent[]>;
+  updateTradeEvent(id: number, data: Partial<TradeEvent>): Promise<TradeEvent | undefined>;
+  createEventPromotion(promo: InsertEventPromotion): Promise<EventPromotion>;
+  getEventPromotions(eventId: number): Promise<EventPromotion[]>;
+
+  // Agricultural Exchange
+  createAgriListing(listing: InsertAgriListing): Promise<AgriListing>;
+  getAgriListings(): Promise<AgriListing[]>;
+  getAgriListing(id: number): Promise<AgriListing | undefined>;
+  updateAgriListing(id: number, data: Partial<AgriListing>): Promise<AgriListing | undefined>;
+  createAgriBid(bid: InsertAgriBid): Promise<AgriBid>;
+  getAgriBids(listingId: number): Promise<AgriBid[]>;
+
+  // Live Sessions
+  createLiveSession(session: InsertLiveSession): Promise<LiveSession>;
+  getLiveSessions(): Promise<LiveSession[]>;
+  getLiveSession(id: number): Promise<LiveSession | undefined>;
+  updateLiveSession(id: number, data: Partial<LiveSession>): Promise<LiveSession | undefined>;
+  createLiveSessionProduct(product: InsertLiveSessionProduct): Promise<LiveSessionProduct>;
+  getLiveSessionProducts(sessionId: number): Promise<LiveSessionProduct[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2909,6 +3042,336 @@ export class DatabaseStorage implements IStorage {
   async updateAfcftaCertificate(id: number, data: Partial<AfcftaCertificate>): Promise<AfcftaCertificate | undefined> {
     const [result] = await db.update(afcftaCertificates).set(data).where(eq(afcftaCertificates.id, id)).returning();
     return result;
+  }
+
+  // Referrals
+  async createReferral(data: InsertReferral): Promise<Referral> {
+    const [result] = await db.insert(referrals).values(data).returning();
+    return result;
+  }
+
+  async getReferralByCode(code: string): Promise<Referral | undefined> {
+    const [result] = await db.select().from(referrals).where(eq(referrals.referralCode, code));
+    return result;
+  }
+
+  async getReferralsByUser(userId: string): Promise<Referral[]> {
+    return db.select().from(referrals).where(eq(referrals.referrerId, userId)).orderBy(desc(referrals.createdAt));
+  }
+
+  async getUserReferralStats(userId: string): Promise<{ total: number; converted: number; rewarded: number; totalEarnings: string }> {
+    const allReferrals = await db.select().from(referrals).where(eq(referrals.referrerId, userId));
+    const converted = allReferrals.filter(r => r.status === 'signed_up' || r.status === 'first_purchase' || r.status === 'rewarded').length;
+    const rewarded = allReferrals.filter(r => r.status === 'rewarded').length;
+    const totalEarnings = allReferrals.filter(r => r.rewardAmount).reduce((sum, r) => sum + parseFloat(r.rewardAmount || '0'), 0);
+    return { total: allReferrals.length, converted, rewarded, totalEarnings: totalEarnings.toFixed(2) };
+  }
+
+  async updateReferral(id: number, data: Partial<Referral>): Promise<Referral | undefined> {
+    const [result] = await db.update(referrals).set(data).where(eq(referrals.id, id)).returning();
+    return result;
+  }
+
+  // Social Posts
+  async createSocialPost(data: InsertSocialPost): Promise<SocialPost> {
+    const [result] = await db.insert(socialPosts).values(data).returning();
+    return result;
+  }
+
+  async getSocialPosts(filters?: { platform?: string; status?: string; limit?: number }): Promise<SocialPost[]> {
+    const conditions = [];
+    if (filters?.platform) conditions.push(eq(socialPosts.platform, filters.platform));
+    if (filters?.status) conditions.push(eq(socialPosts.status, filters.status));
+    const query = db.select().from(socialPosts).where(conditions.length > 0 ? and(...conditions) : undefined).orderBy(desc(socialPosts.createdAt));
+    if (filters?.limit) return query.limit(filters.limit);
+    return query;
+  }
+
+  async getSocialPost(id: number): Promise<SocialPost | undefined> {
+    const [result] = await db.select().from(socialPosts).where(eq(socialPosts.id, id));
+    return result;
+  }
+
+  async updateSocialPost(id: number, data: Partial<SocialPost>): Promise<SocialPost | undefined> {
+    const [result] = await db.update(socialPosts).set(data).where(eq(socialPosts.id, id)).returning();
+    return result;
+  }
+
+  async deleteSocialPost(id: number): Promise<void> {
+    await db.delete(socialPosts).where(eq(socialPosts.id, id));
+  }
+
+  async getScheduledPosts(): Promise<SocialPost[]> {
+    return db.select().from(socialPosts).where(
+      and(eq(socialPosts.status, 'scheduled'), lte(socialPosts.scheduledAt, new Date()))
+    ).orderBy(asc(socialPosts.scheduledAt));
+  }
+
+  // Marketing Automations
+  async createMarketingAutomation(data: InsertMarketingAutomation): Promise<MarketingAutomation> {
+    const [result] = await db.insert(marketingAutomations).values(data).returning();
+    return result;
+  }
+
+  async getMarketingAutomations(): Promise<MarketingAutomation[]> {
+    return db.select().from(marketingAutomations).orderBy(desc(marketingAutomations.createdAt));
+  }
+
+  async getMarketingAutomation(id: number): Promise<MarketingAutomation | undefined> {
+    const [result] = await db.select().from(marketingAutomations).where(eq(marketingAutomations.id, id));
+    return result;
+  }
+
+  async updateMarketingAutomation(id: number, data: Partial<MarketingAutomation>): Promise<MarketingAutomation | undefined> {
+    const [result] = await db.update(marketingAutomations).set(data).where(eq(marketingAutomations.id, id)).returning();
+    return result;
+  }
+
+  async deleteMarketingAutomation(id: number): Promise<void> {
+    await db.delete(marketingAutomations).where(eq(marketingAutomations.id, id));
+  }
+
+  async getDueAutomations(): Promise<MarketingAutomation[]> {
+    return db.select().from(marketingAutomations).where(
+      and(
+        eq(marketingAutomations.isActive, true),
+        or(
+          lte(marketingAutomations.nextRunAt, new Date()),
+          sql`${marketingAutomations.nextRunAt} IS NULL`
+        )
+      )
+    );
+  }
+
+  // BNPL
+  async createBnplPlan(plan: InsertBnplPlan): Promise<BnplPlan> {
+    const [result] = await db.insert(bnplPlans).values(plan).returning();
+    return result;
+  }
+  async getBnplPlan(id: number): Promise<BnplPlan | undefined> {
+    const [result] = await db.select().from(bnplPlans).where(eq(bnplPlans.id, id));
+    return result;
+  }
+  async getBnplPlansByBuyer(buyerId: string): Promise<BnplPlan[]> {
+    return db.select().from(bnplPlans).where(eq(bnplPlans.buyerId, buyerId)).orderBy(desc(bnplPlans.createdAt));
+  }
+  async updateBnplPlan(id: number, data: Partial<BnplPlan>): Promise<BnplPlan | undefined> {
+    const [result] = await db.update(bnplPlans).set(data).where(eq(bnplPlans.id, id)).returning();
+    return result;
+  }
+  async createBnplPayment(payment: InsertBnplPayment): Promise<BnplPayment> {
+    const [result] = await db.insert(bnplPayments).values(payment).returning();
+    return result;
+  }
+  async getBnplPaymentsByPlan(planId: number): Promise<BnplPayment[]> {
+    return db.select().from(bnplPayments).where(eq(bnplPayments.planId, planId)).orderBy(asc(bnplPayments.installmentNumber));
+  }
+  async updateBnplPayment(id: number, data: Partial<BnplPayment>): Promise<BnplPayment | undefined> {
+    const [result] = await db.update(bnplPayments).set(data).where(eq(bnplPayments.id, id)).returning();
+    return result;
+  }
+
+  // Trade Documents
+  async createTradeDocument(doc: InsertTradeDocument): Promise<TradeDocument> {
+    const [result] = await db.insert(tradeDocuments).values(doc).returning();
+    return result;
+  }
+  async getTradeDocumentsByOrder(orderId: number): Promise<TradeDocument[]> {
+    return db.select().from(tradeDocuments).where(eq(tradeDocuments.orderId, orderId)).orderBy(desc(tradeDocuments.createdAt));
+  }
+  async getTradeDocument(id: number): Promise<TradeDocument | undefined> {
+    const [result] = await db.select().from(tradeDocuments).where(eq(tradeDocuments.id, id));
+    return result;
+  }
+
+  // Storefronts
+  async createStorefront(sf: InsertStorefront): Promise<Storefront> {
+    const [result] = await db.insert(storefronts).values(sf).returning();
+    return result;
+  }
+  async getStorefrontBySeller(sellerId: string): Promise<Storefront | undefined> {
+    const [result] = await db.select().from(storefronts).where(eq(storefronts.sellerId, sellerId));
+    return result;
+  }
+  async getStorefrontBySlug(slug: string): Promise<Storefront | undefined> {
+    const [result] = await db.select().from(storefronts).where(eq(storefronts.slug, slug));
+    return result;
+  }
+  async updateStorefront(id: number, data: Partial<Storefront>): Promise<Storefront | undefined> {
+    const [result] = await db.update(storefronts).set(data).where(eq(storefronts.id, id)).returning();
+    return result;
+  }
+
+  // Commodity Prices
+  async createCommodityPrice(price: InsertCommodityPrice): Promise<CommodityPrice> {
+    const [result] = await db.insert(commodityPrices).values(price).returning();
+    return result;
+  }
+  async getCommodityPrices(): Promise<CommodityPrice[]> {
+    return db.select().from(commodityPrices).orderBy(desc(commodityPrices.date));
+  }
+  async getLatestCommodityPrices(): Promise<CommodityPrice[]> {
+    return db.select().from(commodityPrices).orderBy(desc(commodityPrices.date)).limit(50);
+  }
+  async createPriceAlert(alert: InsertPriceAlert): Promise<PriceAlert> {
+    const [result] = await db.insert(priceAlerts).values(alert).returning();
+    return result;
+  }
+  async getPriceAlertsByUser(userId: string): Promise<PriceAlert[]> {
+    return db.select().from(priceAlerts).where(eq(priceAlerts.userId, userId)).orderBy(desc(priceAlerts.createdAt));
+  }
+  async updatePriceAlert(id: number, data: Partial<PriceAlert>): Promise<PriceAlert | undefined> {
+    const [result] = await db.update(priceAlerts).set(data).where(eq(priceAlerts.id, id)).returning();
+    return result;
+  }
+  async deletePriceAlert(id: number): Promise<void> {
+    await db.delete(priceAlerts).where(eq(priceAlerts.id, id));
+  }
+
+  // Buyer Verifications
+  async createBuyerVerification(v: InsertBuyerVerification): Promise<BuyerVerification> {
+    const [result] = await db.insert(buyerVerifications).values(v).returning();
+    return result;
+  }
+  async getBuyerVerification(buyerId: string): Promise<BuyerVerification | undefined> {
+    const [result] = await db.select().from(buyerVerifications).where(eq(buyerVerifications.buyerId, buyerId));
+    return result;
+  }
+  async getBuyerVerifications(): Promise<BuyerVerification[]> {
+    return db.select().from(buyerVerifications).orderBy(desc(buyerVerifications.createdAt));
+  }
+  async updateBuyerVerification(id: number, data: Partial<BuyerVerification>): Promise<BuyerVerification | undefined> {
+    const [result] = await db.update(buyerVerifications).set(data).where(eq(buyerVerifications.id, id)).returning();
+    return result;
+  }
+
+  // Forum
+  async createForumCategory(cat: InsertForumCategory): Promise<ForumCategory> {
+    const [result] = await db.insert(forumCategories).values(cat).returning();
+    return result;
+  }
+  async getForumCategories(): Promise<ForumCategory[]> {
+    return db.select().from(forumCategories).orderBy(asc(forumCategories.sortOrder));
+  }
+  async createForumPost(post: InsertForumPost): Promise<ForumPost> {
+    const [result] = await db.insert(forumPosts).values(post).returning();
+    return result;
+  }
+  async getForumPosts(categoryId?: number): Promise<ForumPost[]> {
+    if (categoryId) {
+      return db.select().from(forumPosts).where(eq(forumPosts.categoryId, categoryId)).orderBy(desc(forumPosts.createdAt));
+    }
+    return db.select().from(forumPosts).orderBy(desc(forumPosts.createdAt));
+  }
+  async getForumPost(id: number): Promise<ForumPost | undefined> {
+    const [result] = await db.select().from(forumPosts).where(eq(forumPosts.id, id));
+    return result;
+  }
+  async updateForumPost(id: number, data: Partial<ForumPost>): Promise<ForumPost | undefined> {
+    const [result] = await db.update(forumPosts).set(data).where(eq(forumPosts.id, id)).returning();
+    return result;
+  }
+  async createForumReply(reply: InsertForumReply): Promise<ForumReply> {
+    const [result] = await db.insert(forumReplies).values(reply).returning();
+    return result;
+  }
+  async getForumReplies(postId: number): Promise<ForumReply[]> {
+    return db.select().from(forumReplies).where(eq(forumReplies.postId, postId)).orderBy(asc(forumReplies.createdAt));
+  }
+
+  // Logistics Partners
+  async createLogisticsPartner(partner: InsertLogisticsPartner): Promise<LogisticsPartner> {
+    const [result] = await db.insert(logisticsPartners).values(partner).returning();
+    return result;
+  }
+  async getLogisticsPartners(): Promise<LogisticsPartner[]> {
+    return db.select().from(logisticsPartners).where(eq(logisticsPartners.isActive, true));
+  }
+  async getLogisticsPartnersByCountry(country: string): Promise<LogisticsPartner[]> {
+    return db.select().from(logisticsPartners).where(
+      and(eq(logisticsPartners.isActive, true), sql`${country} = ANY(${logisticsPartners.countries})`)
+    );
+  }
+  async createLogisticsBooking(booking: InsertLogisticsBooking): Promise<LogisticsBooking> {
+    const [result] = await db.insert(logisticsBookings).values(booking).returning();
+    return result;
+  }
+  async getLogisticsBookingsByOrder(orderId: number): Promise<LogisticsBooking[]> {
+    return db.select().from(logisticsBookings).where(eq(logisticsBookings.orderId, orderId));
+  }
+
+  // Trade Events
+  async createTradeEvent(event: InsertTradeEvent): Promise<TradeEvent> {
+    const [result] = await db.insert(tradeEvents).values(event).returning();
+    return result;
+  }
+  async getTradeEvents(): Promise<TradeEvent[]> {
+    return db.select().from(tradeEvents).orderBy(asc(tradeEvents.startDate));
+  }
+  async getActiveTradeEvents(): Promise<TradeEvent[]> {
+    const now = new Date();
+    return db.select().from(tradeEvents).where(
+      and(eq(tradeEvents.isActive, true), gte(tradeEvents.endDate, now))
+    ).orderBy(asc(tradeEvents.startDate));
+  }
+  async updateTradeEvent(id: number, data: Partial<TradeEvent>): Promise<TradeEvent | undefined> {
+    const [result] = await db.update(tradeEvents).set(data).where(eq(tradeEvents.id, id)).returning();
+    return result;
+  }
+  async createEventPromotion(promo: InsertEventPromotion): Promise<EventPromotion> {
+    const [result] = await db.insert(eventPromotions).values(promo).returning();
+    return result;
+  }
+  async getEventPromotions(eventId: number): Promise<EventPromotion[]> {
+    return db.select().from(eventPromotions).where(eq(eventPromotions.eventId, eventId));
+  }
+
+  // Agricultural Exchange
+  async createAgriListing(listing: InsertAgriListing): Promise<AgriListing> {
+    const [result] = await db.insert(agriListings).values(listing).returning();
+    return result;
+  }
+  async getAgriListings(): Promise<AgriListing[]> {
+    return db.select().from(agriListings).where(eq(agriListings.status, "active")).orderBy(desc(agriListings.createdAt));
+  }
+  async getAgriListing(id: number): Promise<AgriListing | undefined> {
+    const [result] = await db.select().from(agriListings).where(eq(agriListings.id, id));
+    return result;
+  }
+  async updateAgriListing(id: number, data: Partial<AgriListing>): Promise<AgriListing | undefined> {
+    const [result] = await db.update(agriListings).set(data).where(eq(agriListings.id, id)).returning();
+    return result;
+  }
+  async createAgriBid(bid: InsertAgriBid): Promise<AgriBid> {
+    const [result] = await db.insert(agriBids).values(bid).returning();
+    return result;
+  }
+  async getAgriBids(listingId: number): Promise<AgriBid[]> {
+    return db.select().from(agriBids).where(eq(agriBids.listingId, listingId)).orderBy(desc(agriBids.createdAt));
+  }
+
+  // Live Sessions
+  async createLiveSession(session: InsertLiveSession): Promise<LiveSession> {
+    const [result] = await db.insert(liveSessions).values(session).returning();
+    return result;
+  }
+  async getLiveSessions(): Promise<LiveSession[]> {
+    return db.select().from(liveSessions).orderBy(desc(liveSessions.createdAt));
+  }
+  async getLiveSession(id: number): Promise<LiveSession | undefined> {
+    const [result] = await db.select().from(liveSessions).where(eq(liveSessions.id, id));
+    return result;
+  }
+  async updateLiveSession(id: number, data: Partial<LiveSession>): Promise<LiveSession | undefined> {
+    const [result] = await db.update(liveSessions).set(data).where(eq(liveSessions.id, id)).returning();
+    return result;
+  }
+  async createLiveSessionProduct(product: InsertLiveSessionProduct): Promise<LiveSessionProduct> {
+    const [result] = await db.insert(liveSessionProducts).values(product).returning();
+    return result;
+  }
+  async getLiveSessionProducts(sessionId: number): Promise<LiveSessionProduct[]> {
+    return db.select().from(liveSessionProducts).where(eq(liveSessionProducts.sessionId, sessionId));
   }
 }
 

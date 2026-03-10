@@ -673,6 +673,10 @@ export default function Admin() {
               <Building2 className="h-4 w-4" />
               <span className="hidden md:inline">Outreach</span>
             </TabsTrigger>
+            <TabsTrigger value="marketing" className="flex items-center gap-1 text-xs md:text-sm" data-testid="tab-marketing">
+              <Megaphone className="h-4 w-4" />
+              <span className="hidden md:inline">Marketing</span>
+            </TabsTrigger>
             {adminSession?.isSuperAdmin && (
               <TabsTrigger value="admins" className="flex items-center gap-1 text-xs md:text-sm" data-testid="tab-admins">
                 <UserCog className="h-4 w-4" />
@@ -1791,6 +1795,10 @@ export default function Admin() {
 
           <TabsContent value="outreach" className="space-y-6">
             <ManufacturerOutreachTab />
+          </TabsContent>
+
+          <TabsContent value="marketing" className="space-y-6">
+            <MarketingHubTab />
           </TabsContent>
 
           {/* Admin Accounts Tab - Super Admin Only */}
@@ -4351,4 +4359,10 @@ function ManufacturerOutreachTab() {
       </Card>
     </div>
   );
+}
+
+
+import MarketingHub from "@/pages/marketing-hub";
+function MarketingHubTab() {
+  return <MarketingHub />;
 }
