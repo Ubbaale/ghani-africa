@@ -46,6 +46,13 @@ import {
   Activity,
   Receipt,
   Layers,
+  CreditCard,
+  Wheat,
+  Video,
+  Users,
+  BarChart3,
+  ShieldCheck,
+  Compass,
 } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { useState, useEffect } from "react";
@@ -524,6 +531,45 @@ export default function Dashboard() {
             />
           </div>
         )}
+
+        <div className="mb-6" data-testid="quick-access-toolbar">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Quick Access</h2>
+            <Link href="/services">
+              <Button variant="ghost" size="sm" className="text-xs" data-testid="link-all-services">
+                <Compass className="w-3 h-3 mr-1" /> All Services
+              </Button>
+            </Link>
+          </div>
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+            {(isSeller ? [
+              { icon: Store, label: "Storefront", href: "/storefront-builder", color: "text-purple-600", bg: "bg-purple-50" },
+              { icon: Video, label: "Go Live", href: "/live-shopping", color: "text-red-600", bg: "bg-red-50" },
+              { icon: Calendar, label: "Events", href: "/trade-events", color: "text-orange-600", bg: "bg-orange-50" },
+              { icon: Wheat, label: "Agri Exchange", href: "/agri-exchange", color: "text-green-600", bg: "bg-green-50" },
+              { icon: FileText, label: "Trade Docs", href: "/trade-documents", color: "text-blue-600", bg: "bg-blue-50" },
+              { icon: BarChart3, label: "Commodities", href: "/commodity-prices", color: "text-emerald-600", bg: "bg-emerald-50" },
+              { icon: Users, label: "Community", href: "/community", color: "text-indigo-600", bg: "bg-indigo-50" },
+              { icon: Truck, label: "Logistics", href: "/logistics", color: "text-amber-600", bg: "bg-amber-50" },
+            ] : [
+              { icon: CreditCard, label: "BNPL", href: "/bnpl", color: "text-blue-600", bg: "bg-blue-50" },
+              { icon: ShieldCheck, label: "Get Verified", href: "/buyer-verification", color: "text-green-600", bg: "bg-green-50" },
+              { icon: BarChart3, label: "Commodities", href: "/commodity-prices", color: "text-emerald-600", bg: "bg-emerald-50" },
+              { icon: Users, label: "Community", href: "/community", color: "text-indigo-600", bg: "bg-indigo-50" },
+              { icon: Video, label: "Live Deals", href: "/live-shopping", color: "text-red-600", bg: "bg-red-50" },
+              { icon: Wheat, label: "Agri Market", href: "/agri-exchange", color: "text-green-600", bg: "bg-green-50" },
+              { icon: Calendar, label: "Events", href: "/trade-events", color: "text-orange-600", bg: "bg-orange-50" },
+              { icon: Truck, label: "Logistics", href: "/logistics", color: "text-amber-600", bg: "bg-amber-50" },
+            ]).map((item, i) => (
+              <Link key={i} href={item.href}>
+                <div className={`flex flex-col items-center gap-1 p-2 rounded-lg ${item.bg} hover:opacity-80 transition-opacity cursor-pointer`} data-testid={`quick-link-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <item.icon className={`w-5 h-5 ${item.color}`} />
+                  <span className="text-[10px] font-medium text-center leading-tight">{item.label}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
 
         {isSeller && (
           <Card className="mb-6 bg-gradient-to-r from-primary/10 to-secondary/10 border-primary/20">

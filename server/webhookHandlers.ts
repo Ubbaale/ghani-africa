@@ -2,7 +2,7 @@ import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { feeService } from './feeService';
 import { db } from './db';
 import { eq, and } from 'drizzle-orm';
-import { sellerSubscriptions, subscriptionTiers, advertisements, userProfiles, tradeExpoAds } from '@shared/schema';
+import { sellerSubscriptions, subscriptionTiers, advertisements, userProfiles, tradeExpoAds, storefronts, liveSessions, tradeDocuments, eventPromotions } from '@shared/schema';
 import { users } from '@shared/models/auth';
 
 export class WebhookHandlers {
@@ -122,6 +122,64 @@ export class WebhookHandlers {
           ));
 
         console.log(`Ad activated: product ${productId} for ${durationDays} days`);
+      }
+    }
+
+    // Storefront payment
+    if (session.mode === 'payment' && session.metadata?.type === 'storefront') {
+      const storefrontId = session.metadata?.storefrontId;
+      if (storefrontId) {
+        await db.update(storefronts)
+          .set({
+            paymentStatus: 'paid',
+            stripePaymentId: session.payment_intent as string || session.id,
+          })
+          .where(eq(storefronts.id, parseInt(storefrontId)));
+        console.log(`Storefront payment completed: storefront ${storefrontId}`);
+      }
+    }
+
+    // Live session payment
+    if (session.mode === 'payment' && session.metadata?.type === 'live_session') {
+      const sessionId = session.metadata?.sessionId;
+      if (sessionId) {
+        await db.update(liveSessions)
+          .set({
+            paymentStatus: 'paid',
+            stripePaymentId: session.payment_intent as string || session.id,
+          })
+          .where(eq(liveSessions.id, parseInt(sessionId)));
+        console.log(`Live session payment completed: session ${sessionId}`);
+      }
+    }
+
+    // Trade document payment
+    if (session.mode === 'payment' && session.metadata?.type === 'trade_document') {
+      const documentId = session.metadata?.documentId;
+      if (documentId) {
+        await db.update(tradeDocuments)
+          .set({
+            status: 'generated',
+            paymentStatus: 'paid',
+            stripePaymentId: session.payment_intent as string || session.id,
+          })
+          .where(eq(tradeDocuments.id, parseInt(documentId)));
+        console.log(`Trade document payment completed: document ${documentId}`);
+      }
+    }
+
+    // Event promotion payment
+    if (session.mode === 'payment' && session.metadata?.type === 'event_promotion') {
+      const promotionId = session.metadata?.promotionId;
+      if (promotionId) {
+        await db.update(eventPromotions)
+          .set({
+            status: 'active',
+            paymentStatus: 'paid',
+            stripePaymentId: session.payment_intent as string || session.id,
+          })
+          .where(eq(eventPromotions.id, parseInt(promotionId)));
+        console.log(`Event promotion payment completed: promotion ${promotionId}`);
       }
     }
 

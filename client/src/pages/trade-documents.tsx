@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Download, Plus, Receipt, Package, Globe, File } from "lucide-react";
+import { FileText, Download, Plus, Receipt, Package, Globe, File, CreditCard } from "lucide-react";
 
 const DOC_TYPES = [
   { value: "commercial_invoice", label: "Commercial Invoice", icon: Receipt, fee: "$3.00", desc: "Official invoice for customs declaration" },
@@ -23,6 +23,18 @@ export default function TradeDocumentsPage() {
   const [orderId, setOrderId] = useState("");
   const [selectedType, setSelectedType] = useState("");
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success") === "true") {
+      toast({ title: "Payment Successful!", description: "Your trade document has been generated and is ready for download." });
+      window.history.replaceState({}, "", "/trade-documents");
+    }
+    if (params.get("cancelled") === "true") {
+      toast({ title: "Payment Cancelled", description: "Document was not generated.", variant: "destructive" });
+      window.history.replaceState({}, "", "/trade-documents");
+    }
+  }, []);
+
   const { data: docs, isLoading: docsLoading } = useQuery({
     queryKey: ["/api/trade-documents/order", orderId],
     queryFn: () => fetch(`/api/trade-documents/order/${orderId}`).then(r => r.json()),
@@ -30,11 +42,14 @@ export default function TradeDocumentsPage() {
   });
 
   const generateMutation = useMutation({
-    mutationFn: (data: { orderId: string; type: string }) => apiRequest("POST", "/api/trade-documents/generate", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/trade-documents/order", orderId] });
-      toast({ title: "Document Generated", description: "Your trade document is ready" });
-      setSelectedType("");
+    mutationFn: async (data: { orderId: string; type: string }) => {
+      const res = await apiRequest("POST", "/api/service-checkout/trade-document", data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -86,7 +101,7 @@ export default function TradeDocumentsPage() {
               </Select>
             </div>
             <Button onClick={() => generateMutation.mutate({ orderId, type: selectedType })} disabled={!orderId || !selectedType || generateMutation.isPending} data-testid="button-generate-doc">
-              <Plus className="h-4 w-4 mr-2" /> Generate
+              <CreditCard className="h-4 w-4 mr-2" /> {generateMutation.isPending ? "Redirecting to payment..." : `Pay & Generate (${DOC_TYPES.find(d => d.value === selectedType)?.fee || "$3.00"})`}
             </Button>
           </div>
         </CardContent>

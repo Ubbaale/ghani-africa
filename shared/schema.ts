@@ -1747,6 +1747,8 @@ export const tradeDocuments = pgTable("trade_documents", {
   generatedBy: varchar("generated_by", { length: 255 }).notNull(),
   fee: decimal("fee", { precision: 8, scale: 2 }).default("3.00"),
   status: text("status").default("generated"),
+  paymentStatus: text("payment_status").default("pending"),
+  stripePaymentId: text("stripe_payment_id"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_trade_doc_order").on(table.orderId),
@@ -1770,6 +1772,8 @@ export const storefronts = pgTable("storefronts", {
   customSections: jsonb("custom_sections").default([]),
   isPublished: boolean("is_published").default(false),
   monthlyFee: decimal("monthly_fee", { precision: 8, scale: 2 }).default("15.00"),
+  paymentStatus: text("payment_status").default("pending"),
+  stripePaymentId: text("stripe_payment_id"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_storefront_seller").on(table.sellerId),
@@ -1948,6 +1952,8 @@ export const eventPromotions = pgTable("event_promotions", {
   promotionType: text("promotion_type").default("featured"),
   fee: decimal("fee", { precision: 8, scale: 2 }).default("25.00"),
   status: text("status").default("pending"),
+  paymentStatus: text("payment_status").default("pending"),
+  stripePaymentId: text("stripe_payment_id"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_event_promo_event").on(table.eventId),
@@ -2021,6 +2027,8 @@ export const liveSessions = pgTable("live_sessions", {
   endedAt: timestamp("ended_at"),
   viewerCount: integer("viewer_count").default(0),
   fee: decimal("fee", { precision: 8, scale: 2 }).default("10.00"),
+  paymentStatus: text("payment_status").default("pending"),
+  stripePaymentId: text("stripe_payment_id"),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_live_seller").on(table.sellerId),

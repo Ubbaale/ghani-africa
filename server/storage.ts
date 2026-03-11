@@ -547,6 +547,7 @@ export interface IStorage {
 
   // Trade Events
   createTradeEvent(event: InsertTradeEvent): Promise<TradeEvent>;
+  getTradeEvent(id: number): Promise<TradeEvent | undefined>;
   getTradeEvents(): Promise<TradeEvent[]>;
   getActiveTradeEvents(): Promise<TradeEvent[]>;
   updateTradeEvent(id: number, data: Partial<TradeEvent>): Promise<TradeEvent | undefined>;
@@ -3303,6 +3304,10 @@ export class DatabaseStorage implements IStorage {
   // Trade Events
   async createTradeEvent(event: InsertTradeEvent): Promise<TradeEvent> {
     const [result] = await db.insert(tradeEvents).values(event).returning();
+    return result;
+  }
+  async getTradeEvent(id: number): Promise<TradeEvent | undefined> {
+    const [result] = await db.select().from(tradeEvents).where(eq(tradeEvents.id, id));
     return result;
   }
   async getTradeEvents(): Promise<TradeEvent[]> {

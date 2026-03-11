@@ -24,6 +24,7 @@ Preferred communication style: Simple, everyday language.
 - **Secure Transaction Platform**: Dashboards for protected orders, escrow status, dispute management, and Trade Assurance Badges with tiered protection levels.
 - **Product Quotation System**: Alibaba-style Request for Quotation (RFQ) directly from product pages, enabling buyers to request quotes and sellers to respond.
 - **Payment & Checkout**: Integrated with Stripe for secure card payments, including platform commission. Mobile Money payment infrastructure for African providers (M-Pesa, MTN, Airtel, Orange) with API integration pending.
+- **Stripe Payment Gates for Premium Services**: All premium services require Stripe payment before activation. Endpoints: `/api/service-checkout/storefront` ($15), `/api/service-checkout/live-session` ($10), `/api/service-checkout/trade-document` ($2-$5 by type), `/api/service-checkout/event-promotion` ($25). Legacy free-create endpoints return 402. Webhook fulfillment in `webhookHandlers.ts` activates records on payment. Tables have `paymentStatus` and `stripePaymentId` columns.
 - **Subscription Model**: Tiered monthly subscriptions (e.g., Verified Seller) offering reduced commissions and enhanced features, managed via Stripe webhooks.
 - **Cross-Border & Domestic Trade**: Automatic trade detection, comprehensive country tax rates, predefined shipping zones, and real-time trade cost estimation at checkout. AfCFTA trade compliance tools include eligibility badges, duty calculators, and certificate flows.
 - **Advertising System**: Basic, Premium, and Featured advertising packages with varying durations, placements, and video ad support.
@@ -38,6 +39,13 @@ Preferred communication style: Simple, everyday language.
     - **Photo Reviews**: Reviews with image upload capabilities.
     - **Supplier Factory Profiles**: Detailed profiles showcasing factory size, capacity, certifications, and more.
     - **Group Buying / Cooperative Purchasing**: System for buyers to form groups to reach wholesale pricing tiers.
+- **Platform Discoverability & Navigation**:
+    - **Services Hub Page**: Central directory at `/services` with all platform features organized into 6 categories (Trade Tools, Finance, Market Data, Community, Logistics, Seller Tools).
+    - **Seller Success Guide**: Step-by-step onboarding guide at `/seller-guide` with progress tracking, tool links, and tips.
+    - **Buyer Protection / Trust Center**: Comprehensive trust page at `/buyer-protection` explaining escrow, trade assurance, dispute resolution, and verified seller tiers.
+    - **Quick-Access Toolbar**: Dashboard feature toolbar with role-based shortcuts (sellers see Storefront/Live Shopping/Events; buyers see BNPL/Verification/Commodities).
+    - **Bottom Navigation**: Services link replaces Messages in mobile bottom nav for feature discoverability.
+    - **Home Page**: "Explore Our Platform" section with 12 feature cards; enhanced footer with Buyers/Sellers/Platform columns linking to all features.
 - **Enhanced Offline PWA**: Service worker for image and API response caching, an offline action queue for non-GET requests, and an offline indicator.
 - **Admin Authentication**: Separate, session-based admin authentication with roles and secure password management.
 - **Scalability**: Database optimization, in-memory caching, API rate limiting, asynchronous job queues, and pagination.

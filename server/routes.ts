@@ -7664,41 +7664,22 @@ Only return valid JSON, no other text or markdown.`,
   });
 
   app.post("/api/trade-documents/generate", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user?.id || req.session?.userId;
-      if (!userId) return res.status(401).json({ error: "Not authenticated" });
-      const { orderId, type } = req.body;
-      if (!orderId || !type) return res.status(400).json({ error: "Order ID and document type required" });
-
-      const order = await storage.getOrder(parseInt(orderId));
-      if (!order) return res.status(404).json({ error: "Order not found" });
-      if (order.buyerId !== userId && order.sellerId !== userId) return res.status(403).json({ error: "Access denied" });
-
-      const items = await storage.getOrderItems(parseInt(orderId));
-      const docNumber = `${type.toUpperCase().replace(/_/g, '')}-${Date.now()}-${orderId}`;
-
-      const feeMap: Record<string, string> = { commercial_invoice: "3.00", packing_list: "2.00", certificate_of_origin: "5.00", proforma_invoice: "2.50" };
-
-      const doc = await storage.createTradeDocument({
-        orderId: parseInt(orderId),
-        type,
-        documentNumber: docNumber,
-        data: { order, items, generatedAt: new Date().toISOString(), type },
-        generatedBy: userId,
-        fee: feeMap[type] || "3.00",
-        status: "generated",
-      });
-
-      res.json({ success: true, data: doc });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
+    return res.status(402).json({ error: "Payment required. Use /api/service-checkout/trade-document to generate and pay for a trade document." });
   });
 
   app.get("/api/trade-documents/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
       const doc = await storage.getTradeDocument(parseInt(req.params.id));
       if (!doc) return res.status(404).json({ error: "Document not found" });
+      if (doc.generatedBy !== userId) {
+        const order = await storage.getOrder(doc.orderId);
+        if (!order || (order.buyerId !== userId && order.sellerId !== userId)) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+      }
+      if (doc.paymentStatus !== "paid") return res.status(402).json({ error: "Payment required for this document" });
       res.json({ success: true, data: doc });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -7731,29 +7712,7 @@ Only return valid JSON, no other text or markdown.`,
   });
 
   app.post("/api/storefronts", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user?.id || req.session?.userId;
-      if (!userId) return res.status(401).json({ error: "Not authenticated" });
-      const { name, description, theme } = req.body;
-      if (!name) return res.status(400).json({ error: "Store name required" });
-
-      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      const existing = await storage.getStorefrontBySlug(slug);
-      if (existing) return res.status(400).json({ error: "Store name already taken" });
-
-      const storefront = await storage.createStorefront({
-        sellerId: userId,
-        name,
-        slug,
-        description: description || "",
-        theme: theme || { primaryColor: "#D4A574", secondaryColor: "#2D5016", layout: "grid" },
-        isPublished: false,
-      });
-
-      res.json({ success: true, data: storefront });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
+    return res.status(402).json({ error: "Payment required. Use /api/service-checkout/storefront to create and pay for a storefront." });
   });
 
   app.patch("/api/storefronts/:id", isAuthenticated, async (req: any, res) => {
@@ -7762,6 +7721,7 @@ Only return valid JSON, no other text or markdown.`,
       if (!userId) return res.status(401).json({ error: "Not authenticated" });
       const existing = await storage.getStorefrontBySeller(userId);
       if (!existing || existing.id !== parseInt(req.params.id)) return res.status(403).json({ error: "Access denied" });
+      if (existing.paymentStatus !== "paid") return res.status(402).json({ error: "Payment required before modifying storefront" });
       const storefront = await storage.updateStorefront(parseInt(req.params.id), req.body);
       if (!storefront) return res.status(404).json({ error: "Storefront not found" });
       res.json({ success: true, data: storefront });
@@ -8005,25 +7965,7 @@ Only return valid JSON, no other text or markdown.`,
   });
 
   app.post("/api/trade-events/promote", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user?.id || req.session?.userId;
-      if (!userId) return res.status(401).json({ error: "Not authenticated" });
-      const { eventId, productId, promotionType } = req.body;
-      if (!eventId || !productId) return res.status(400).json({ error: "Missing required fields" });
-
-      const promo = await storage.createEventPromotion({
-        eventId: parseInt(eventId),
-        sellerId: userId,
-        productId: parseInt(productId),
-        promotionType: promotionType || "featured",
-        fee: "25.00",
-        status: "pending",
-      });
-
-      res.json({ success: true, data: promo });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
+    return res.status(402).json({ error: "Payment required. Use /api/service-checkout/event-promotion to promote and pay." });
   });
 
   app.get("/api/trade-events/:id/promotions", async (req: any, res) => {
@@ -8140,25 +8082,7 @@ Only return valid JSON, no other text or markdown.`,
   });
 
   app.post("/api/live-sessions", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user?.id || req.session?.userId;
-      if (!userId) return res.status(401).json({ error: "Not authenticated" });
-      const { title, description, scheduledAt, fee } = req.body;
-      if (!title) return res.status(400).json({ error: "Title required" });
-
-      const session = await storage.createLiveSession({
-        sellerId: userId,
-        title,
-        description,
-        status: "scheduled",
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
-        fee: fee || "10.00",
-      });
-
-      res.json({ success: true, data: session });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
+    return res.status(402).json({ error: "Payment required. Use /api/service-checkout/live-session to schedule and pay for a live session." });
   });
 
   app.patch("/api/live-sessions/:id", isAuthenticated, async (req: any, res) => {
@@ -8210,6 +8134,206 @@ Only return valid JSON, no other text or markdown.`,
     setInterval(checkBrowseReminders, BROWSE_REMINDER_INTERVAL);
     setInterval(runMarketingEngine, MARKETING_CHECK_INTERVAL);
   }, 30000);
+
+  // ============ SERVICE PAYMENT CHECKOUT ENDPOINTS ============
+
+  app.post("/api/service-checkout/storefront", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { name, description, theme } = req.body;
+      if (!name) return res.status(400).json({ error: "Store name required" });
+
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const existing = await storage.getStorefrontBySlug(slug);
+      if (existing) return res.status(400).json({ error: "Store name already taken" });
+
+      const storefront = await storage.createStorefront({
+        sellerId: userId,
+        name,
+        slug,
+        description: description || "",
+        theme: theme || { primaryColor: "#D4A574", secondaryColor: "#2D5016", layout: "grid" },
+        isPublished: false,
+        paymentStatus: "pending",
+      });
+
+      const stripe = await getUncachableStripeClient();
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: { name: "Storefront Builder - Monthly", description: `Custom branded storefront: ${name}` },
+            unit_amount: 1500,
+          },
+          quantity: 1,
+        }],
+        mode: "payment",
+        success_url: `${baseUrl}/storefront-builder?success=true`,
+        cancel_url: `${baseUrl}/storefront-builder?cancelled=true`,
+        metadata: { userId, type: "storefront", storefrontId: storefront.id.toString() },
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error: any) {
+      console.error("Storefront checkout error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/service-checkout/live-session", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { title, description, scheduledAt } = req.body;
+      if (!title) return res.status(400).json({ error: "Title required" });
+
+      const liveSession = await storage.createLiveSession({
+        sellerId: userId,
+        title,
+        description,
+        status: "scheduled",
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : new Date(),
+        fee: "10.00",
+        paymentStatus: "pending",
+      });
+
+      const stripe = await getUncachableStripeClient();
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: { name: "Live Shopping Session", description: `Live session: ${title}` },
+            unit_amount: 1000,
+          },
+          quantity: 1,
+        }],
+        mode: "payment",
+        success_url: `${baseUrl}/live-shopping?success=true`,
+        cancel_url: `${baseUrl}/live-shopping?cancelled=true`,
+        metadata: { userId, type: "live_session", sessionId: liveSession.id.toString() },
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error: any) {
+      console.error("Live session checkout error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/service-checkout/trade-document", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { orderId, type } = req.body;
+      if (!orderId || !type) return res.status(400).json({ error: "Order ID and document type required" });
+
+      const order = await storage.getOrder(parseInt(orderId));
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      if (order.buyerId !== userId && order.sellerId !== userId) return res.status(403).json({ error: "Access denied" });
+
+      const feeMap: Record<string, number> = { commercial_invoice: 300, packing_list: 200, certificate_of_origin: 500, proforma_invoice: 250 };
+      const feeStringMap: Record<string, string> = { commercial_invoice: "3.00", packing_list: "2.00", certificate_of_origin: "5.00", proforma_invoice: "2.50" };
+      const amountCents = feeMap[type] || 300;
+      const feeStr = feeStringMap[type] || "3.00";
+
+      const items = await storage.getOrderItems(parseInt(orderId));
+      const docNumber = `${type.toUpperCase().replace(/_/g, '')}-${Date.now()}-${orderId}`;
+
+      const doc = await storage.createTradeDocument({
+        orderId: parseInt(orderId),
+        type,
+        documentNumber: docNumber,
+        data: { order, items, generatedAt: new Date().toISOString(), type },
+        generatedBy: userId,
+        fee: feeStr,
+        status: "pending_payment",
+        paymentStatus: "pending",
+      });
+
+      const typeLabels: Record<string, string> = {
+        commercial_invoice: "Commercial Invoice",
+        packing_list: "Packing List",
+        certificate_of_origin: "Certificate of Origin",
+        proforma_invoice: "Proforma Invoice",
+      };
+
+      const stripe = await getUncachableStripeClient();
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: { name: `Trade Document - ${typeLabels[type] || type}`, description: `Document for order #${orderId}` },
+            unit_amount: amountCents,
+          },
+          quantity: 1,
+        }],
+        mode: "payment",
+        success_url: `${baseUrl}/trade-documents?success=true`,
+        cancel_url: `${baseUrl}/trade-documents?cancelled=true`,
+        metadata: { userId, type: "trade_document", documentId: doc.id.toString(), docType: type },
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error: any) {
+      console.error("Trade document checkout error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/service-checkout/event-promotion", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id || req.session?.userId;
+      if (!userId) return res.status(401).json({ error: "Not authenticated" });
+      const { eventId, productId, promotionType } = req.body;
+      if (!eventId || !productId) return res.status(400).json({ error: "Event ID and Product ID required" });
+
+      const event = await storage.getTradeEvent(parseInt(eventId));
+      if (!event) return res.status(404).json({ error: "Event not found" });
+      const product = await storage.getProduct(parseInt(productId));
+      if (!product) return res.status(404).json({ error: "Product not found" });
+      if (product.sellerId !== userId) return res.status(403).json({ error: "You can only promote your own products" });
+
+      const promo = await storage.createEventPromotion({
+        eventId: parseInt(eventId),
+        sellerId: userId,
+        productId: parseInt(productId),
+        promotionType: promotionType || "featured",
+        fee: "25.00",
+        status: "pending",
+        paymentStatus: "pending",
+      });
+
+      const stripe = await getUncachableStripeClient();
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: { name: "Event Product Promotion", description: `Featured promotion at trade event #${eventId}` },
+            unit_amount: 2500,
+          },
+          quantity: 1,
+        }],
+        mode: "payment",
+        success_url: `${baseUrl}/trade-events?success=true`,
+        cancel_url: `${baseUrl}/trade-events?cancelled=true`,
+        metadata: { userId, type: "event_promotion", promotionId: promo.id.toString() },
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error: any) {
+      console.error("Event promotion checkout error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   return httpServer;
 }

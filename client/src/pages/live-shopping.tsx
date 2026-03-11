@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Video, Plus, Play, Clock, Users, ShoppingBag, Calendar, Radio, Eye, DollarSign } from "lucide-react";
+import { Video, Plus, Play, Clock, Users, ShoppingBag, Calendar, Radio, Eye, DollarSign, CreditCard } from "lucide-react";
 
 export default function LiveShoppingPage() {
   const { user } = useAuth();
@@ -20,6 +20,19 @@ export default function LiveShoppingPage() {
   const [scheduledDate, setScheduledDate] = useState("");
   const [selectedSession, setSelectedSession] = useState<number | null>(null);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success") === "true") {
+      toast({ title: "Payment Successful!", description: "Your live shopping session has been scheduled and paid for." });
+      queryClient.invalidateQueries({ queryKey: ["/api/live-sessions"] });
+      window.history.replaceState({}, "", "/live-shopping");
+    }
+    if (params.get("cancelled") === "true") {
+      toast({ title: "Payment Cancelled", description: "Your session was not scheduled.", variant: "destructive" });
+      window.history.replaceState({}, "", "/live-shopping");
+    }
+  }, []);
+
   const { data: sessions, isLoading } = useQuery({ queryKey: ["/api/live-sessions"] });
   const { data: sessionDetail } = useQuery({
     queryKey: ["/api/live-sessions", selectedSession],
@@ -28,8 +41,15 @@ export default function LiveShoppingPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/live-sessions", data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/live-sessions"] }); toast({ title: "Live Session Scheduled" }); setShowCreateDialog(false); setTitle(""); setDescription(""); },
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/service-checkout/live-session", data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
     onError: (error: any) => { toast({ title: "Error", description: error.message, variant: "destructive" }); },
   });
 
@@ -146,7 +166,7 @@ export default function LiveShoppingPage() {
                 </div>
                 <div className="p-3 bg-muted rounded-lg text-sm"><DollarSign className="h-4 w-4 inline mr-1" />Session fee: <strong>$10.00</strong> (charged when going live)</div>
                 <Button className="w-full" onClick={() => createMutation.mutate({ title, description, scheduledAt: scheduledDate || undefined })} disabled={!title || createMutation.isPending} data-testid="button-create-session">
-                  <Calendar className="h-4 w-4 mr-2" /> Schedule Session
+                  <CreditCard className="h-4 w-4 mr-2" /> {createMutation.isPending ? "Redirecting to payment..." : "Pay $10 & Schedule Session"}
                 </Button>
               </div>
             </DialogContent>
@@ -220,7 +240,16 @@ export default function LiveShoppingPage() {
           )}
 
           {sessionList.length === 0 && (
-            <Card><CardContent className="py-12 text-center"><Video className="h-12 w-12 mx-auto mb-3 text-muted-foreground" /><p className="text-muted-foreground">No live sessions yet. Schedule one to showcase your products!</p></CardContent></Card>
+            <Card><CardContent className="py-12 text-center">
+              <Video className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+              <p className="text-muted-foreground mb-3">No live sessions yet. Schedule one to showcase your products!</p>
+              <p className="text-sm text-muted-foreground">Live sessions cost <strong>$10 per session</strong> and let you showcase products to buyers in real-time.</p>
+              {user && (
+                <Button className="mt-4" onClick={() => setShowCreateDialog(true)} data-testid="button-schedule-empty-state">
+                  <Plus className="h-4 w-4 mr-2" /> Schedule Your First Live Session - $10
+                </Button>
+              )}
+            </CardContent></Card>
           )}
         </>
       )}

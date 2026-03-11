@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Search, ShoppingCart, MessageCircle, User } from "lucide-react";
+import { Search, ShoppingCart, MessageCircle, User, LayoutGrid } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +10,7 @@ const navItems = [
   { path: "/", icon: null, labelKey: "nav.home", label: "Home", isLogo: true },
   { path: "/browse", icon: Search, labelKey: "nav.browse", label: "Browse", isLogo: false },
   { path: "/cart", icon: ShoppingCart, labelKey: "nav.cart", label: "Cart", isLogo: false },
-  { path: "/messages", icon: MessageCircle, labelKey: "nav.chat", label: "Chat", isLogo: false },
+  { path: "/services", icon: LayoutGrid, labelKey: "nav.services", label: "Services", isLogo: false },
   { path: "/dashboard", icon: User, labelKey: "nav.profile", label: "Profile", isLogo: false },
 ];
 

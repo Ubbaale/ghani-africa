@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Store, Palette, Eye, Save, ExternalLink } from "lucide-react";
+import { Store, Palette, Eye, Save, ExternalLink, CreditCard } from "lucide-react";
 import { useLocation } from "wouter";
 
 const THEMES = [
@@ -29,16 +29,33 @@ export default function StorefrontBuilder() {
   const [description, setDescription] = useState("");
   const [selectedTheme, setSelectedTheme] = useState(0);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success") === "true") {
+      toast({ title: "Payment Successful!", description: "Your storefront has been activated. Start customizing it now!" });
+      queryClient.invalidateQueries({ queryKey: ["/api/my-storefront"] });
+      window.history.replaceState({}, "", "/storefront-builder");
+    }
+    if (params.get("cancelled") === "true") {
+      toast({ title: "Payment Cancelled", description: "Your storefront was not created.", variant: "destructive" });
+      window.history.replaceState({}, "", "/storefront-builder");
+    }
+  }, []);
+
   const { data: storefront, isLoading } = useQuery({
     queryKey: ["/api/my-storefront"],
     enabled: !!user,
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", "/api/storefronts", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/my-storefront"] });
-      toast({ title: "Storefront Created!", description: "Your branded store is ready to customize" });
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/service-checkout/storefront", data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -95,7 +112,7 @@ export default function StorefrontBuilder() {
               </div>
             </div>
             <Button className="w-full" onClick={() => createMutation.mutate({ name, description, theme: THEMES[selectedTheme] })} disabled={!name || createMutation.isPending} data-testid="button-create-storefront">
-              <Store className="h-4 w-4 mr-2" /> Create Storefront - $15/month
+              <CreditCard className="h-4 w-4 mr-2" /> {createMutation.isPending ? "Redirecting to payment..." : "Pay $15 & Create Storefront"}
             </Button>
           </CardContent>
         </Card>

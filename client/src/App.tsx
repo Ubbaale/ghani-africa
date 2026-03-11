@@ -63,6 +63,9 @@ import LogisticsPartnersPage from "@/pages/logistics-partners";
 import TradeEventsPage from "@/pages/trade-events";
 import AgriExchangePage from "@/pages/agri-exchange";
 import LiveShoppingPage from "@/pages/live-shopping";
+import ServicesPage from "@/pages/services";
+import SellerGuidePage from "@/pages/seller-guide";
+import BuyerProtectionPage from "@/pages/buyer-protection";
 
 function Router() {
   return (
@@ -116,6 +119,9 @@ function Router() {
       <Route path="/trade-events" component={TradeEventsPage} />
       <Route path="/agri-exchange" component={AgriExchangePage} />
       <Route path="/live-shopping" component={LiveShoppingPage} />
+      <Route path="/services" component={ServicesPage} />
+      <Route path="/seller-guide" component={SellerGuidePage} />
+      <Route path="/buyer-protection" component={BuyerProtectionPage} />
       <Route component={NotFound} />
     </Switch>
   );

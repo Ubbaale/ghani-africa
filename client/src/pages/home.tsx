@@ -64,6 +64,11 @@ import {
   Flame,
   RefreshCw,
   Store,
+  LayoutGrid,
+  Video,
+  Wheat,
+  ShieldCheck,
+  Compass,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { CountryFlag } from "@/components/country-flag";
@@ -689,8 +694,8 @@ export default function Home() {
       {/* 2. Main Header - Sticky */}
       <header className="sticky top-0 z-50 bg-background border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4 h-16">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 h-16">
+            <div className="flex items-center gap-4 flex-shrink-0">
               <GradientLogo size="md" />
               
               <div className="relative hidden lg:block">
@@ -753,7 +758,7 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="hidden md:flex flex-col flex-1 max-w-2xl">
+            <div className="hidden md:flex flex-col flex-1 min-w-0 max-w-2xl mx-auto">
               <div className="flex items-center gap-1 mb-1">
                 {(["products", "suppliers", "manufacturers"] as const).map((tab) => (
                   <button
@@ -811,7 +816,7 @@ export default function Home() {
               </form>
             </div>
 
-            <nav className="flex items-center gap-1">
+            <nav className="flex items-center gap-1 flex-shrink-0 ml-auto">
               {authLoading ? null : user ? (
                 <>
                   <Link href="/messages">
@@ -1729,6 +1734,58 @@ export default function Home() {
       {/* 16. AI Assistant */}
       <AIAssistant />
 
+      {/* Explore Platform Section */}
+      <section className="py-10 border-b bg-muted/20" data-testid="section-explore-platform">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Compass className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Explore Our Platform</h2>
+                <p className="text-sm text-muted-foreground">Discover all the tools and services available to you</p>
+              </div>
+            </div>
+            <Link href="/services">
+              <Button variant="outline" size="sm" data-testid="button-explore-all">
+                View All <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {[
+              { icon: CreditCard, label: "Buy Now Pay Later", desc: "Flexible installments", href: "/bnpl", color: "text-blue-600", bg: "bg-blue-50" },
+              { icon: Store, label: "Storefront Builder", desc: "Your branded shop", href: "/storefront-builder", color: "text-purple-600", bg: "bg-purple-50" },
+              { icon: Video, label: "Live Shopping", desc: "Shop in real-time", href: "/live-shopping", color: "text-red-600", bg: "bg-red-50" },
+              { icon: Wheat, label: "Agri Exchange", desc: "Farm-to-market", href: "/agri-exchange", color: "text-green-600", bg: "bg-green-50" },
+              { icon: BarChart3, label: "Commodity Prices", desc: "Market data", href: "/commodity-prices", color: "text-emerald-600", bg: "bg-emerald-50" },
+              { icon: Users, label: "Community", desc: "Trade discussions", href: "/community", color: "text-indigo-600", bg: "bg-indigo-50" },
+              { icon: Truck, label: "Logistics", desc: "Shipping partners", href: "/logistics", color: "text-amber-600", bg: "bg-amber-50" },
+              { icon: CalendarDays, label: "Trade Events", desc: "African events", href: "/trade-events", color: "text-orange-600", bg: "bg-orange-50" },
+              { icon: ShieldCheck, label: "Buyer Protection", desc: "Safe transactions", href: "/buyer-protection", color: "text-teal-600", bg: "bg-teal-50" },
+              { icon: FileText, label: "Trade Documents", desc: "Export paperwork", href: "/trade-documents", color: "text-sky-600", bg: "bg-sky-50" },
+              { icon: Award, label: "Get Verified", desc: "Build trust", href: "/buyer-verification", color: "text-yellow-600", bg: "bg-yellow-50" },
+              { icon: Building2, label: "Seller Guide", desc: "Start selling", href: "/seller-guide", color: "text-rose-600", bg: "bg-rose-50" },
+            ].map((item, i) => (
+              <Link key={i} href={item.href}>
+                <Card className="h-full hover:shadow-md transition-shadow cursor-pointer" data-testid={`explore-card-${item.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                  <CardContent className="p-3 flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${item.bg} shrink-0`}>
+                      <item.icon className={`w-5 h-5 ${item.color}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium leading-tight">{item.label}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{item.desc}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 17. Footer */}
       <footer className="bg-card border-t">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12">
@@ -1752,27 +1809,31 @@ export default function Home() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link href="/browse" data-testid="link-footer-browse">Browse Products</Link></li>
                 <li><Link href="/rfq" data-testid="link-footer-rfq">Request Quotation</Link></li>
-                <li><Link href="/trade-assurance" data-testid="link-footer-trade-assurance">Trade Assurance</Link></li>
+                <li><Link href="/buyer-protection" data-testid="link-footer-buyer-protection">Buyer Protection</Link></li>
+                <li><Link href="/bnpl" data-testid="link-footer-bnpl">Buy Now Pay Later</Link></li>
+                <li><Link href="/buyer-verification" data-testid="link-footer-buyer-verification">Get Verified</Link></li>
                 <li><Link href="/help" data-testid="link-footer-help">Help Center</Link></li>
-                <li><Link href="/trust-safety" data-testid="link-footer-trust-safety">Trust & Safety</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Sellers</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link href="/sell" data-testid="link-footer-sell">Start Selling</Link></li>
+                <li><Link href="/seller-guide" data-testid="link-footer-seller-guide">Seller Guide</Link></li>
                 <li><Link href="/dashboard" data-testid="link-footer-dashboard">Seller Dashboard</Link></li>
-                <li><a href="#" data-testid="link-footer-resources">Seller Resources</a></li>
-                <li><a href="#" data-testid="link-footer-pricing">Pricing Plans</a></li>
+                <li><Link href="/storefront-builder" data-testid="link-footer-storefront">Storefront Builder</Link></li>
+                <li><Link href="/live-shopping" data-testid="link-footer-live-shopping">Live Shopping</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Company</h4>
+              <h4 className="font-semibold mb-4">Platform</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" data-testid="link-footer-about">About Us</a></li>
-                <li><a href="#" data-testid="link-footer-careers">Careers</a></li>
-                <li><a href="#" data-testid="link-footer-press">Press</a></li>
-                <li><a href="#" data-testid="link-footer-contact">Contact</a></li>
+                <li><Link href="/services" data-testid="link-footer-services">All Services</Link></li>
+                <li><Link href="/community" data-testid="link-footer-community">Community Forum</Link></li>
+                <li><Link href="/commodity-prices" data-testid="link-footer-commodities">Commodity Prices</Link></li>
+                <li><Link href="/agri-exchange" data-testid="link-footer-agri">Agri Exchange</Link></li>
+                <li><Link href="/logistics" data-testid="link-footer-logistics">Logistics Partners</Link></li>
+                <li><Link href="/trade-events" data-testid="link-footer-events">Trade Events</Link></li>
               </ul>
             </div>
           </div>
